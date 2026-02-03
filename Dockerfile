@@ -9,6 +9,12 @@
 # ----- STAGE 1: Build Frontend -----
 FROM node:25-alpine AS frontend-builder
 
+# Aggiornamenti di sicurezza
+RUN apk update && apk upgrade --no-cache
+
+# Aggiorna npm per CVE-2026-24842
+RUN npm install -g npm@latest
+
 WORKDIR /app
 
 # Copia package files del frontend
@@ -27,6 +33,9 @@ RUN npm run build && ls -la build/
 
 # ----- STAGE 2: Build Backend -----
 FROM node:25-alpine AS backend-builder
+
+# Aggiornamenti di sicurezza
+RUN apk update && apk upgrade --no-cache
 
 # Installa openssl (richiesto da Prisma)
 RUN apk add --no-cache openssl
@@ -51,8 +60,19 @@ RUN npm run build
 # ----- STAGE 3: Produzione -----
 FROM node:25-alpine AS production
 
+# Aggiornamenti di sicurezza (include busybox per CVE-2025-60876)
+RUN apk update && apk upgrade --no-cache
+
+# Aggiorna npm per risolvere CVE-2026-24842 (node-tar>=7.5.7)
+RUN npm install -g npm@latest
+
 # Installa nginx, supervisord e openssl (richiesto da Prisma)
 RUN apk add --no-cache nginx supervisor openssl
+
+# Rimuovi solo wheel/setuptools vulnerabili (CVE-2026-24049) - mantieni Python per supervisord
+RUN rm -rf /usr/lib/python*/site-packages/wheel* \
+           /usr/lib/python*/site-packages/setuptools* \
+           /usr/lib/python*/site-packages/pkg_resources* 2>/dev/null || true
 
 WORKDIR /app
 
