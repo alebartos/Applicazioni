@@ -1,5 +1,5 @@
 # ====================================
-# Dockerfile All-in-One (Fix CVE tar)
+# Dockerfile All-in-One (Fix Supervisord)
 # Frontend React + Backend Express
 # ====================================
 # Uso: docker build -t messaging-game .
@@ -40,7 +40,7 @@ RUN apk update && apk upgrade --no-cache
 RUN npm install -g npm@latest tar@latest
 RUN apk add --no-cache nginx supervisor openssl
 
-# CVE-2026-24049: Rimuovi wheel/setuptools Python
+# CVE-2026-24049 cleanup
 RUN rm -rf /usr/lib/python*/site-packages/{wheel,setuptools,pkg_resources}* 2>/dev/null || true
 
 WORKDIR /app
@@ -57,7 +57,7 @@ WORKDIR /app
 COPY --from=frontend-builder /app/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/http.d/default.conf
 
-# Supervisord
+# Supervisord FIXED
 RUN mkdir -p /etc/supervisor.d
 COPY <<EOF /etc/supervisor.d/app.ini
 [supervisord]
@@ -69,14 +69,18 @@ logfile_maxbytes=0
 command=nginx -g "daemon off;"
 autostart=true
 autorestart=true
-stdout_logfile=/dev/stdout | stderr_logfile=/dev/stderr
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
 
 [program:backend]
 command=sh -c "cd /app/backend && npx prisma db push --skip-generate && node dist/index.js"
 autostart=true
 autorestart=true
-stdout_logfile=/dev/stdout | stderr_logfile=/dev/stderr
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
 environment=NODE_ENV="production",PORT="3001",DATABASE_URL="file:/app/data/messaging-game.db",ADMIN_SECRET="%(ENV_ADMIN_SECRET)s"
 EOF
