@@ -5,7 +5,7 @@
 [![Docker Stars](https://img.shields.io/docker/stars/ale120800/messaggeria?color=orange)](https://hub.docker.com/r/ale120800/messaggeria)
 
 ## Avvio Rapido
-
+Per avviare il container Docker si può seguire una di queste 3 vie:
 <details>
 <summary>Docker Hub </summary>
 
@@ -67,7 +67,7 @@ docker compose up -d
 ## 🛠️ Comandi Utili
 
 <details>
-<summary>Update + Pulizia - COPIA</summary>
+<summary>Update + Pulizia</summary>
 
 ```bash
 # Update Docker Hub
@@ -84,11 +84,11 @@ docker volume prune -f
 </details>
 
 
-## 🤝 Contributi
+## Contributi
 
 ...
 
-## 📄 Licenza
+## Licenza
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
