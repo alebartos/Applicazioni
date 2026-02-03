@@ -7,7 +7,7 @@
 # ====================================
 
 # ----- STAGE 1: Build Frontend -----
-FROM node:20-alpine AS frontend-builder
+FROM node:25-alpine AS frontend-builder
 
 WORKDIR /app
 
@@ -22,11 +22,14 @@ COPY src ./src
 COPY index.html ./
 COPY vite.config.ts ./
 
-# Build frontend
-RUN npm run build && ls -la dist/
+# Build frontend (output in build/, non dist/)
+RUN npm run build && ls -la build/
 
 # ----- STAGE 2: Build Backend -----
-FROM node:20-alpine AS backend-builder
+FROM node:25-alpine AS backend-builder
+
+# Installa openssl (richiesto da Prisma)
+RUN apk add --no-cache openssl
 
 WORKDIR /app/backend
 
@@ -46,10 +49,10 @@ RUN npx prisma generate
 RUN npm run build
 
 # ----- STAGE 3: Produzione -----
-FROM node:20-alpine AS production
+FROM node:25-alpine AS production
 
-# Installa nginx e supervisord
-RUN apk add --no-cache nginx supervisor
+# Installa nginx, supervisord e openssl (richiesto da Prisma)
+RUN apk add --no-cache nginx supervisor openssl
 
 WORKDIR /app
 
@@ -71,8 +74,8 @@ RUN mkdir -p /app/data
 # ----- Setup Frontend (Nginx) -----
 WORKDIR /app
 
-# Copia frontend buildato
-COPY --from=frontend-builder /app/dist /usr/share/nginx/html
+# Copia frontend buildato (output è in build/, non dist/)
+COPY --from=frontend-builder /app/build /usr/share/nginx/html
 
 # Copia configurazione nginx
 COPY nginx.conf /etc/nginx/http.d/default.conf
