@@ -1,36 +1,120 @@
 # ====================================
-# Dockerfile per il Frontend React
-# Multi-stage build: Build + Nginx
+# Dockerfile All-in-One
+# Frontend React + Backend Express
+# ====================================
+# Uso: docker build -t messaging-game .
+#      docker run -d -p 8080:80 messaging-game
 # ====================================
 
-# ----- STAGE 1: Build -----
-FROM node:20-alpine AS builder
+# ----- STAGE 1: Build Frontend -----
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+
+# Copia package files del frontend
+COPY package*.json ./
+
+# Installa dipendenze frontend
+RUN npm ci
+
+# Copia il codice frontend
+COPY src ./src
+COPY index.html ./
+COPY vite.config.ts ./
+
+# Build frontend
+RUN npm run build
+
+# ----- STAGE 2: Build Backend -----
+FROM node:20-alpine AS backend-builder
+
+WORKDIR /app/backend
+
+# Copia package files del backend
+COPY backend/package*.json ./
+COPY backend/tsconfig.json ./
+
+# Installa tutte le dipendenze (incluse dev per build)
+RUN npm ci
+
+# Copia codice backend
+COPY backend/prisma ./prisma
+COPY backend/src ./src
+
+# Genera Prisma client e compila TypeScript
+RUN npx prisma generate
+RUN npm run build
+
+# ----- STAGE 3: Produzione -----
+FROM node:20-alpine AS production
+
+# Installa nginx e supervisord
+RUN apk add --no-cache nginx supervisor
 
 WORKDIR /app
 
-# Copia i file di configurazione
-COPY package*.json ./
+# ----- Setup Backend -----
+COPY backend/package*.json ./backend/
+WORKDIR /app/backend
+RUN npm ci --only=production
 
-# Installa le dipendenze
-RUN npm ci
+# Copia Prisma e genera client
+COPY backend/prisma ./prisma
+RUN npx prisma generate
 
-# Copia il codice sorgente
-COPY ../../../Downloads/applicazioni-github .
+# Copia backend compilato
+COPY --from=backend-builder /app/backend/dist ./dist
 
-# Build dell'applicazione
-RUN npm run build
+# Crea directory per database
+RUN mkdir -p /app/data
 
-# ----- STAGE 2: Produzione con Nginx -----
-FROM nginx:alpine
+# ----- Setup Frontend (Nginx) -----
+WORKDIR /app
 
-# Copia la configurazione nginx personalizzata
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copia frontend buildato
+COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
 
-# Copia i file buildati dalla stage precedente
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Copia configurazione nginx
+COPY nginx.conf /etc/nginx/http.d/default.conf
 
-# Espone la porta 80
+# ----- Configurazione Supervisord -----
+RUN mkdir -p /etc/supervisor.d
+COPY <<EOF /etc/supervisor.d/app.ini
+[supervisord]
+nodaemon=true
+logfile=/dev/stdout
+logfile_maxbytes=0
+
+[program:nginx]
+command=nginx -g "daemon off;"
+autostart=true
+autorestart=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:backend]
+command=sh -c "cd /app/backend && npx prisma db push --skip-generate && node dist/index.js"
+autostart=true
+autorestart=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+environment=NODE_ENV=production,PORT=3001,DATABASE_URL="file:/app/data/messaging-game.db",ADMIN_SECRET="%(ENV_ADMIN_SECRET)s"
+EOF
+
+# Variabili d'ambiente di default
+ENV NODE_ENV=production
+ENV ADMIN_SECRET=MESSAGINGAME2025!ADMIN
+
+# Espone porta 80 (nginx serve frontend e fa proxy al backend)
 EXPOSE 80
 
-# Avvia nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD wget -q --spider http://localhost/api/health || exit 1
+
+# Avvia supervisord (gestisce nginx + backend)
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]

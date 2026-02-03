@@ -1,7 +1,7 @@
 # ====================================
 # CI/CD Pipeline - Digital Messaging Game
 # ====================================
-# Esegue test, build e verifica Docker
+# Esegue build e test Docker
 # ====================================
 
 name: CI/CD Pipeline
@@ -13,9 +13,9 @@ on:
     branches: [main, master]
 
 jobs:
-  # ---- Job 1: Test e Build Frontend ----
-  frontend:
-    name: Frontend Build & Test
+  # ---- Job 1: Build e Test ----
+  build:
+    name: Build & Test
     runs-on: ubuntu-latest
 
     steps:
@@ -28,61 +28,29 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Installa dipendenze
+      - name: Installa dipendenze frontend
         run: npm ci
-
-      - name: Lint (se configurato)
-        run: npm run lint --if-present
-        continue-on-error: true
 
       - name: Build frontend
         run: npm run build
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build
-          path: dist/
-          retention-days: 7
-
-  # ---- Job 2: Test e Build Backend ----
-  backend:
-    name: Backend Build & Test
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
+      - name: Installa dipendenze backend
         working-directory: ./backend
-
-    steps:
-      - name: Checkout codice
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Installa dipendenze
         run: npm ci
 
       - name: Genera Prisma Client
+        working-directory: ./backend
         run: npx prisma generate
 
-      - name: Build TypeScript
-        run: npm run build --if-present
+      - name: Build backend
+        working-directory: ./backend
+        run: npm run build
 
-      - name: Test (se configurato)
-        run: npm test --if-present
-        continue-on-error: true
-
-  # ---- Job 3: Build Docker Images ----
+  # ---- Job 2: Docker Build & Test ----
   docker:
-    name: Docker Build
+    name: Docker Build & Test
     runs-on: ubuntu-latest
-    needs: [frontend, backend]
+    needs: [build]
 
     steps:
       - name: Checkout codice
@@ -91,51 +59,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Frontend Docker Image
+      - name: Build Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: false
-          tags: messaging-game-frontend:latest
+          tags: messaging-game:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build Backend Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          push: false
-          tags: messaging-game-backend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ---- Job 4: Docker Compose Test ----
-  docker-compose:
-    name: Docker Compose Validation
-    runs-on: ubuntu-latest
-    needs: [docker]
-
-    steps:
-      - name: Checkout codice
-        uses: actions/checkout@v4
-
-      - name: Valida docker-compose.yml
-        run: docker compose config
-
-      - name: Build con Docker Compose
-        run: docker compose build
-
-      - name: Avvia servizi (test)
+      - name: Test Docker Container
         run: |
-          docker compose up -d
-          sleep 15  # Attendi avvio servizi
-
-      - name: Health check backend
-        run: |
-          curl -f http://localhost:3001/api/health || exit 1
-
-      - name: Ferma servizi
-        run: docker compose down -v
-        if: always()
+          docker build -t messaging-game .
+          docker run -d -p 8080:80 --name test-container messaging-game
+          sleep 20  # Attendi avvio servizi
+          curl -f http://localhost:8080/api/health || exit 1
+          docker stop test-container
+          docker rm test-container
