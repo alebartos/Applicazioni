@@ -20,7 +20,7 @@ docker run -d \
 </details>
 
 <details>
-<summary>🔨 Build Locale</summary>
+<summary>Build Locale</summary>
 
 ```bash
 git clone <tuo-repo> messaggeria
