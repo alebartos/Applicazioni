@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment files (contiene secrets)
+.env
+.env.local
+.env.production
+*.local
+
+# Database files
+*.db
+*.db-journal
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vecchie cartelle Supabase (non più utilizzate)
+supabase/
+src/supabase/
+
+# Backend specifico (ha il suo .gitignore)
+backend/node_modules/
+backend/dist/
+backend/.env
+backend/*.db

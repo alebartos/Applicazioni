@@ -1,0 +1,89 @@
+// Schema Database Relazionale per Digital Messaging Game
+// Questo schema sostituisce il KV store di Supabase con un vero DB relazionale
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Tavoli del gioco (es: A1, B2, DJ, 1, 2, etc.)
+model Table {
+  id        String   @id // Alfanumerico: A1, B2, DJ, etc.
+  code      String   @unique // Codice di accesso al tavolo
+  createdAt DateTime @default(now())
+
+  // Relazioni
+  users            User[]
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+}
+
+// Utenti collegati ai tavoli
+model User {
+  id         Int      @id @default(autoincrement())
+  firstName  String
+  lastName   String
+  tableId    String
+  joinedAt   DateTime @default(now())
+  lastActive DateTime @default(now())
+  isAdmin    Boolean  @default(false)
+
+  // Relazioni
+  table Table @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  // Indice per query frequenti
+  @@index([tableId])
+  @@index([lastActive])
+}
+
+// Messaggi scambiati tra tavoli
+model Message {
+  id               String   @id // msg_timestamp_random
+  content          String
+  fromTableId      String? // null per messaggi di sistema/admin
+  toTableId        String
+  senderName       String // Nome reale del mittente (per admin)
+  publicSenderName String? // Nome pubblico (null se anonimo)
+  isAnonymous      Boolean  @default(false)
+  isBroadcast      Boolean  @default(false)
+  timestamp        DateTime @default(now())
+
+  // Reazioni (memorizzate come JSON per semplicita')
+  reactionsHeart    Int @default(0)
+  reactionsThumbsup Int @default(0)
+  reactionsFire     Int @default(0)
+  reactionsLaugh    Int @default(0)
+
+  // Relazioni
+  fromTable Table? @relation("SentMessages", fields: [fromTableId], references: [id], onDelete: SetNull)
+  toTable   Table  @relation("ReceivedMessages", fields: [toTableId], references: [id], onDelete: Cascade)
+
+  // Traccia chi ha reagito (JSON: {"tableId_reaction": true})
+  reactedTables String @default("{}")
+
+  @@index([toTableId])
+  @@index([fromTableId])
+  @@index([timestamp])
+}
+
+// Stato della sessione di gioco (singleton - una sola riga)
+model GameSession {
+  id        Int      @id @default(1) // Sempre 1 (singleton)
+  status    String   @default("not_started") // not_started, active, paused, ended
+  startedAt DateTime?
+  pausedAt  DateTime?
+  endedAt   DateTime?
+}
+
+// Countdown timer (singleton - una sola riga)
+model Countdown {
+  id        Int      @id @default(1) // Sempre 1 (singleton)
+  active    Boolean  @default(false)
+  endsAt    DateTime?
+  message   String   @default("Tempo rimanente")
+  startedAt DateTime?
+}

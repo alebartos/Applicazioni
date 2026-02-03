@@ -1,0 +1,60 @@
+# ====================================
+# Docker Compose - Digital Messaging Game
+# ====================================
+# Avvia con: docker-compose up --build
+# Ferma con: docker-compose down
+# ====================================
+
+version: '3.8'
+
+services:
+  # ---- Backend Express + Prisma + SQLite ----
+  backend:
+    build:
+      context: backend
+      dockerfile: backend/Dockerfile
+    container_name: messaging-game-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=file:/app/data/messaging-game.db
+      - ADMIN_SECRET=${ADMIN_SECRET:-MESSAGINGAME2025!ADMIN}
+    volumes:
+      # Volume per persistenza database SQLite
+      - backend-data:/app/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---- Frontend React + Nginx ----
+  frontend:
+    build:
+      context: ../../../Downloads/applicazioni-github
+      dockerfile: Dockerfile
+    container_name: messaging-game-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+
+# ---- Volumi persistenti ----
+volumes:
+  backend-data:
+    name: messaging-game-db
+
+# ---- Network ----
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build output (verra' creato durante la build)
+dist/
+build/
+
+# Backend (ha il suo Dockerfile)
+backend/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker files (non servono dentro il container)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+*.md
+
+# Vecchie cartelle Supabase
+supabase/
+src/supabase/
