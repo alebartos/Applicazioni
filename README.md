@@ -1,6 +1,4 @@
-# 🎮 Messaggeria Game
-
-**Gioco Educativo Unicam** | React + Express + Prisma | **Docker 150MB** | Portainer 🟢
+# 🎮 Gioco Messaggeria
 
 [![Docker Image Size (latest)](https://img.shields.io/docker/image-size/ale120800/messaggeria/latest?color=green)](https://hub.docker.com/r/ale120800/messaggeria)
 [![Docker Pulls](https://img.shields.io/docker/pulls/ale120800/messaggeria?color=blue)](https://hub.docker.com/r/ale120800/messaggeria)
