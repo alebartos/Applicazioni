@@ -1,15 +1,13 @@
-# 🎮 Gioco Messaggeria
+# Gioco Messaggeria
 
 [![Docker Image Size (latest)](https://img.shields.io/docker/image-size/ale120800/messaggeria/latest?color=green)](https://hub.docker.com/r/ale120800/messaggeria)
 [![Docker Pulls](https://img.shields.io/docker/pulls/ale120800/messaggeria?color=blue)](https://hub.docker.com/r/ale120800/messaggeria)
 [![Docker Stars](https://img.shields.io/docker/stars/ale120800/messaggeria?color=orange)](https://hub.docker.com/r/ale120800/messaggeria)
 
-**Gioco educativo Unicam** | React SPA + Express API | **143MB** | Portainer 🟢
+## Avvio Rapido
 
-## 🚀 Avvio Rapido
-
-### <details>
-<summary>📥 Docker Hub (1 minuto) - COPIA</summary>
+<details>
+<summary>Docker Hub </summary>
 
 ```bash
 docker run -d \
@@ -19,11 +17,10 @@ docker run -d \
   ale120800/messaggeria:latest
 ```
 
-🌐 **Apri**: http://localhost:8080
 </details>
 
-### <details>
-<summary>🔨 Build Locale (5 minuti) - COPIA</summary>
+<details>
+<summary>🔨 Build Locale</summary>
 
 ```bash
 git clone <tuo-repo> messaggeria
@@ -37,8 +34,8 @@ docker run -d \
 ```
 </details>
 
-### <details>
-<summary>🐳 Docker Compose - COPIA</summary>
+<details>
+<summary>Docker Compose</summary>
 
 **Crea** `docker-compose.yml`:
 ```yaml
@@ -56,7 +53,9 @@ docker compose up -d
 ```
 </details>
 
-## ⚙️ Environment Variables
+🌐 **Apri**: http://'serverip':8080
+
+## Environment Variables
 
 | Variabile | Obbligatoria | Esempio |
 |-----------|--------------|---------|
@@ -64,38 +63,11 @@ docker compose up -d
 | `NODE_ENV` | ❌ | `production` |
 | `PORT` | ❌ | `3001` |
 
-## 📱 Portainer (1-Click)
-
-```
-1. Images → Pull: ale120800/messaggeria
-2. Deploy:
-   ├ Name: messaggeria
-   ├ Ports: 8080:80 ✅ AUTO
-   └ Env: ADMIN_SECRET=secret
-3. Status: 🟢 Healthy
-```
-
-## 🔒 CVE Patched 2026
-
-| CVE | Fix | Status |
-|-----|-----|--------|
-| CVE-2026-24842 | `tar@7.5.7+` | ✅ |
-| CVE-2025-60876 | BusyBox upgrade | ✅ |
-| CVE-2026-24049 | Python cleanup | ✅ |
-
-## 📊 Performance
-
-```
-📦 Dimensione: 143MB
-⚡ Avvio: 500ms
-🧠 RAM: 128MB peak
-🏗️ Build: 45s
-```
 
 ## 🛠️ Comandi Utili
 
 <details>
-<summary>🔄 Update + Pulizia - COPIA</summary>
+<summary>Update + Pulizia - COPIA</summary>
 
 ```bash
 # Update Docker Hub
@@ -111,48 +83,15 @@ docker volume prune -f
 ```
 </details>
 
-<details>
-<summary>🐛 Debug - COPIA</summary>
-
-```bash
-docker logs -f messaggeria
-docker exec -it messaggeria sh
-docker run --rm messaggeria npm audit
-```
-</details>
-
-## 📂 Struttura Progetto
-
-```
-├── Dockerfile          # 143MB multi-stage
-├── nginx.conf          # SPA proxy
-├── docker-compose.yml
-├── backend/            # Express + Prisma
-├── src/                # React + Vite SPA
-└── README.md           # Questo file ✨
-```
-
-## 🚀 Deploy Docker Hub
-
-```bash
-docker tag messaggeria ale120800/messaggeria:latest
-docker login
-docker push ale120800/messaggeria:latest
-```
 
 ## 🤝 Contributi
 
-1. 🍴 Fork repository
-2. `npm install && npm run dev`
-3. 🔧 Modifiche + test
-4. 💾 **PR** su GitHub
+...
 
 ## 📄 Licenza
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-© 2026 Alessandro - Università di Camerino
+© 2026 Alessandro Bartolini, Matteo Polverino, Elena Sofia D'Ascanio - Università di Camerino
 
 ---
-
-**143MB Production** 🔥 | **SPA Fluida** ⚡ | **Docker Hub Live** 🐳 | **Portainer Ready** ✅
