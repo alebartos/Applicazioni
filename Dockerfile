@@ -6,6 +6,7 @@
 #      docker run -d -p 8080:80 -e ADMIN_SECRET=your_secret messaging-game
 # ====================================
 
+
 # ----- STAGE 1: Build Frontend -----
 FROM node:25-alpine AS frontend-builder
 
