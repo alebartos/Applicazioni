@@ -9,7 +9,7 @@
 # ----- STAGE 1: Build Frontend -----
 FROM node:20-alpine AS frontend-builder
 
-WORKDIR /app/frontend
+WORKDIR /app
 
 # Copia package files del frontend
 COPY package*.json ./
@@ -17,13 +17,13 @@ COPY package*.json ./
 # Installa dipendenze frontend
 RUN npm ci
 
-# Copia il codice frontend
+# Copia i file del frontend
 COPY src ./src
 COPY index.html ./
 COPY vite.config.ts ./
 
 # Build frontend
-RUN npm run build
+RUN npm run build && ls -la dist/
 
 # ----- STAGE 2: Build Backend -----
 FROM node:20-alpine AS backend-builder
@@ -72,7 +72,7 @@ RUN mkdir -p /app/data
 WORKDIR /app
 
 # Copia frontend buildato
-COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
+COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 
 # Copia configurazione nginx
 COPY nginx.conf /etc/nginx/http.d/default.conf

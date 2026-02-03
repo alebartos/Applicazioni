@@ -5,8 +5,10 @@ node_modules/
 dist/
 build/
 
-# Backend (ha il suo Dockerfile)
-backend/
+# Backend node_modules (verranno installati nel container)
+backend/node_modules/
+backend/dist/
+backend/*.db
 
 # Environment files
 .env
