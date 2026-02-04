@@ -1,4 +1,10 @@
 # Gioco Messaggeria
+Questo gioco è stato sviluppato per portare una moderna versione della messaggeria al DADAZEN a Camerino; Ed è stato recentemente testato durante un paio di serate reali.
+
+Inizialmente l'app era stata pensata per essere gestita da due admin non modificabili ma per adattarsi meglio al progetto di Applicazioni Web e stata inserita la possibilità di registrarsi al primo avvio come admin e scegliere la propria password (quindi abbiamo aggiunto piu o meno 1500 righe di codice a quello che era l'app originale);
+
+Inoltre inizialmente il sito si appoggiava a supabase ma questa dipendenza è stata rimossa attraverso un database interno.
+
 
 [![Docker Image Size (latest)](https://img.shields.io/docker/image-size/ale120800/messaggeria/latest?color=green)](https://hub.docker.com/r/ale120800/messaggeria)
 [![Docker Pulls](https://img.shields.io/docker/pulls/ale120800/messaggeria?color=blue)](https://hub.docker.com/r/ale120800/messaggeria)
@@ -55,14 +61,20 @@ docker compose up -d
 
 🌐 **Apri**: http://'serverip':8080
 
-## Environment Variables
+## Primo Avvio
+Al primo avvio verra proposta la creazione di un profilo admin; Una volta creato il primo profilo admin i successivi accessi verranno indirizzati alla landing page (login)
 
-| Variabile | Obbligatoria | Esempio |
-|-----------|--------------|---------|
-| `ADMIN_SECRET` | ✅ | `mysupersecret123` |
-| `NODE_ENV` | ❌ | `production` |
-| `PORT` | ❌ | `3001` |
+## Funzionalità
+Admin:
+- Gestione Tavoli
+- Avvia/Ferma Gioco
+- Log messaggi giocatori
+- Sfide
 
+Player:
+- Scrivere messaggi (anonimo e non)
+- Reazioni emoji
+- 
 
 ## 🛠️ Comandi Utili
 
