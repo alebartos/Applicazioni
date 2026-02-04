@@ -11,7 +11,7 @@
 FROM node:25-alpine AS frontend-builder
 
 RUN apk update && apk upgrade --no-cache && rm -rf /var/cache/apk/*
-RUN npm install -g npm@latest tar@latest && npm cache clean --force
+RUN npm install -g npm@latest tar@7.5.7 && npm cache clean --force
 
 WORKDIR /app
 COPY package*.json ./
@@ -25,7 +25,7 @@ FROM node:25-alpine AS backend-builder
 RUN apk update && apk upgrade --no-cache && \
     apk add --no-cache openssl && \
     rm -rf /var/cache/apk/*
-RUN npm install -g npm@latest tar@latest && npm cache clean --force
+RUN npm install -g npm@latest tar@7.5.7 && npm cache clean --force
 
 WORKDIR /app/backend
 COPY backend/package*.json ./
@@ -39,9 +39,12 @@ RUN npx prisma generate && npm run build && rm -rf node_modules
 FROM node:25-alpine AS production
 
 RUN apk update && apk upgrade --no-cache && \
-    apk add --no-cache nginx supervisor openssl curl && \
+    apk add --no-cache nginx supervisor openssl curl py3-pip && \
     rm -rf /var/cache/apk/*
-RUN npm install -g npm@latest tar@latest && npm cache clean --force
+RUN npm install -g npm@latest tar@7.5.7 && npm cache clean --force
+
+# Upgrade vulnerable packages to latest versions before cleanup
+RUN pip install --no-cache-dir --break-system-packages wheel==0.46.2 2>/dev/null || true
 
 # CVE-2026-24049 cleanup + rimuovi file non necessari
 RUN rm -rf /usr/lib/python*/site-packages/{wheel,setuptools,pkg_resources}* \
