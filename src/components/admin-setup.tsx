@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Shield, User, Lock, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { buildApiUrl, getApiHeaders } from '../config/api';
+import { buildApiUrl, getApiHeaders } from '../utils/api-helper';
 
 interface AdminSetupProps {
     onSetupComplete: (adminData: {

@@ -6,7 +6,7 @@ import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { User, Lock, Hash, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { buildApiUrl, getApiHeaders } from '../config/api';
+import { buildApiUrl, getApiHeaders } from '../utils/api-helper';
 
 interface StaffPermissions {
     manage_tables: boolean;
