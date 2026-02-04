@@ -4,7 +4,12 @@
 # ====================================
 
 # ----- STAGE 1: Build -----
-FROM node:20-alpine AS builder
+FROM node:25-alpine AS builder
+
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache openssl && \
+    rm -rf /var/cache/apk/*
+RUN npm install -g npm@latest tar@7.5.7 && npm cache clean --force
 
 WORKDIR /app
 
@@ -13,7 +18,7 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 # Installa TUTTE le dipendenze (incluse devDependencies per build)
-RUN npm ci
+RUN npm ci --audit --audit-level=moderate && npm cache clean --force
 
 # Copia il codice sorgente
 COPY prisma ./prisma
@@ -26,7 +31,21 @@ RUN npx prisma generate
 RUN npm run build
 
 # ----- STAGE 2: Produzione -----
-FROM node:20-alpine AS production
+FROM node:25-alpine AS production
+
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache openssl py3-pip && \
+    rm -rf /var/cache/apk/*
+RUN npm install -g npm@latest tar@7.5.7 && npm cache clean --force
+
+# Upgrade vulnerable packages to latest versions before cleanup
+RUN pip install --no-cache-dir --break-system-packages wheel==0.46.2 2>/dev/null || true
+
+# CVE-2026-24049 cleanup + rimuovi file non necessari
+RUN rm -rf /usr/lib/python*/site-packages/{wheel,setuptools,pkg_resources}* \
+           /usr/share/man/* \
+           /tmp/* \
+           /root/.npm 2>/dev/null || true
 
 WORKDIR /app
 
@@ -34,11 +53,12 @@ WORKDIR /app
 COPY package*.json ./
 
 # Installa solo le dipendenze di produzione
-RUN npm ci --only=production
+RUN npm ci --only=production --audit --audit-level=moderate --legacy-peer-deps && \
+    npm cache clean --force
 
 # Copia Prisma schema e genera client
 COPY prisma ./prisma
-RUN npx prisma generate
+RUN npx prisma generate && rm -rf /root/.npm
 
 # Copia il codice compilato dalla stage di build
 COPY --from=builder /app/dist ./dist
