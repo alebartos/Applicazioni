@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
+import { hashPassword, verifyPassword, validatePassword, validateTableCode, sanitizeInput } from './utils/auth';
+import { parsePermissions, serializePermissions, DEFAULT_PERMISSIONS, type StaffPermissions } from './utils/permissions';
 
 // Inizializza Prisma
 export const prisma = new PrismaClient();
@@ -37,35 +39,542 @@ app.get('/api/health', (req, res) => {
 });
 
 // ============================================
+// ADMIN SETUP & AUTHENTICATION
+// ============================================
+
+// Check if admin exists (for first-time setup detection)
+app.get('/api/admin/exists', async (req, res) => {
+  try {
+    const adminCount = await prisma.admin.count();
+    res.json({ exists: adminCount > 0 });
+  } catch (error) {
+    console.error('Error checking admin existence:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// First-time admin setup
+app.post('/api/admin/setup', async (req, res) => {
+  try {
+    const { firstName, lastName, password } = req.body;
+
+    // Validate inputs
+    if (!firstName || !lastName || !password) {
+      return res.status(400).json({ error: 'Tutti i campi sono obbligatori' });
+    }
+
+    // Check if admin already exists
+    const existingAdmin = await prisma.admin.findFirst();
+    if (existingAdmin) {
+      return res.status(400).json({ error: 'Admin già esistente' });
+    }
+
+    // Validate password
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({ error: passwordValidation.error });
+    }
+
+    // Hash password
+    const passwordHash = await hashPassword(password);
+
+    // Create admin
+    const admin = await prisma.admin.create({
+      data: {
+        firstName: sanitizeInput(firstName),
+        lastName: sanitizeInput(lastName),
+        passwordHash,
+        secretTableCode: '001' // Default admin code
+      }
+    });
+
+    console.log(`✓ Admin account created: ${firstName} ${lastName}`);
+
+    res.json({
+      success: true,
+      message: 'Account admin creato con successo',
+      admin: {
+        id: admin.id,
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+        secretTableCode: admin.secretTableCode
+      }
+    });
+  } catch (error) {
+    console.error('Error creating admin:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
 // ADMIN LOGIN
 // ============================================
 app.post('/api/admin/login', async (req, res) => {
   try {
     const { firstName, lastName, tableCode, adminPassword } = req.body;
 
-    // Verifica credenziali admin
-    const isValidAdmin = (
-      (firstName === 'Matteo' && lastName === 'Polverino') ||
-      (firstName === 'Alessandro' && lastName === 'Bartolini')
-    ) && tableCode === '001' && adminPassword === ADMIN_SECRET;
+    // Validate inputs
+    if (!firstName || !lastName || !tableCode || !adminPassword) {
+      return res.status(400).json({ error: 'Tutti i campi sono obbligatori' });
+    }
 
-    if (isValidAdmin) {
-      console.log(`Admin login successful: ${firstName} ${lastName}`);
-      res.json({
+    // Check if it's admin table code
+    const admin = await prisma.admin.findUnique({
+      where: { secretTableCode: tableCode.toUpperCase() }
+    });
+
+    if (admin) {
+      // Admin login attempt
+      const nameMatch =
+          admin.firstName.toLowerCase() === firstName.trim().toLowerCase() &&
+          admin.lastName.toLowerCase() === lastName.trim().toLowerCase();
+
+      if (!nameMatch) {
+        return res.status(401).json({
+          success: false,
+          error: 'Credenziali non valide'
+        });
+      }
+
+      // Verify password
+      const passwordValid = await verifyPassword(adminPassword, admin.passwordHash);
+
+      if (!passwordValid) {
+        return res.status(401).json({
+          success: false,
+          error: 'Password non valida'
+        });
+      }
+
+      console.log(`✓ Admin login successful: ${firstName} ${lastName}`);
+      return res.json({
         success: true,
         isAdmin: true,
-        message: 'Login admin effettuato con successo'
-      });
-    } else {
-      console.log(`Admin login failed: ${firstName} ${lastName}`);
-      res.status(401).json({
-        success: false,
-        isAdmin: false,
-        error: 'Credenziali admin non valide'
+        role: 'admin',
+        permissions: 'all',
+        message: 'Login effettuato con successo'
       });
     }
+
+    // Fallback to legacy hardcoded credentials (backward compatibility)
+    if (ADMIN_SECRET) {
+      const isLegacyAdmin = (
+          (firstName === 'Matteo' && lastName === 'Polverino') ||
+          (firstName === 'Alessandro' && lastName === 'Bartolini')
+      ) && tableCode === '001' && adminPassword === ADMIN_SECRET;
+
+      if (isLegacyAdmin) {
+        console.warn('⚠️ Using legacy admin authentication - please run admin setup');
+        return res.json({
+          success: true,
+          isAdmin: true,
+          role: 'admin',
+          permissions: 'all',
+          message: 'Login effettuato (modalità legacy)'
+        });
+      }
+    }
+
+    // If not admin code, return error
+    return res.status(401).json({
+      success: false,
+      error: 'Credenziali admin non valide'
+    });
+
   } catch (error) {
     console.error('Error in admin login:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Staff login endpoint
+app.post('/api/staff/login', async (req, res) => {
+  try {
+    const { firstName, lastName, tableCode, password } = req.body;
+
+    if (!firstName || !lastName || !tableCode || !password) {
+      return res.status(400).json({ error: 'Tutti i campi sono obbligatori' });
+    }
+
+    // Find staff by table code
+    const staff = await prisma.staff.findUnique({
+      where: { tableCode: tableCode.toUpperCase() }
+    });
+
+    if (!staff) {
+      return res.status(401).json({ error: 'Credenziali non valide' });
+    }
+
+    if (!staff.isActive) {
+      return res.status(403).json({ error: 'Account disabilitato' });
+    }
+
+    // Verify name matches (case-insensitive)
+    const nameMatch =
+        staff.firstName.toLowerCase() === firstName.trim().toLowerCase() &&
+        staff.lastName.toLowerCase() === lastName.trim().toLowerCase();
+
+    if (!nameMatch) {
+      return res.status(401).json({ error: 'Credenziali non valide' });
+    }
+
+    // Verify password
+    const passwordValid = await verifyPassword(password, staff.passwordHash);
+
+    if (!passwordValid) {
+      return res.status(401).json({ error: 'Password non valida' });
+    }
+
+    // Parse permissions
+    const permissions = parsePermissions(staff.permissions);
+
+    console.log(`✓ Staff login successful: ${firstName} ${lastName} (${tableCode})`);
+
+    res.json({
+      success: true,
+      isAdmin: false,
+      isStaff: true,
+      role: 'staff',
+      permissions,
+      message: 'Login effettuato con successo'
+    });
+
+  } catch (error) {
+    console.error('Error in staff login:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// ADMIN PROFILE MANAGEMENT
+// ============================================
+
+// Get admin profile
+app.get('/api/admin/profile', async (req, res) => {
+  try {
+    const admin = await prisma.admin.findFirst();
+
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin non trovato' });
+    }
+
+    res.json({
+      profile: {
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+        secretTableCode: admin.secretTableCode,
+        createdAt: admin.createdAt.toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching admin profile:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update admin secret table code
+app.put('/api/admin/secret-code', async (req, res) => {
+  try {
+    const { newCode } = req.body;
+
+    if (!newCode) {
+      return res.status(400).json({ error: 'Nuovo codice richiesto' });
+    }
+
+    const validation = validateTableCode(newCode);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
+
+    const codeUpperCase = newCode.toUpperCase();
+
+    // Check if code conflicts with existing table or staff
+    const existingTable = await prisma.table.findUnique({
+      where: { code: codeUpperCase }
+    });
+
+    if (existingTable) {
+      return res.status(400).json({
+        error: 'Codice in conflitto con un tavolo di gioco esistente'
+      });
+    }
+
+    const existingStaff = await prisma.staff.findUnique({
+      where: { tableCode: codeUpperCase }
+    });
+
+    if (existingStaff) {
+      return res.status(400).json({
+        error: 'Codice in conflitto con un membro dello staff'
+      });
+    }
+
+    // Update admin code
+    const admin = await prisma.admin.findFirst();
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin non trovato' });
+    }
+
+    await prisma.admin.update({
+      where: { id: admin.id },
+      data: { secretTableCode: codeUpperCase }
+    });
+
+    console.log(`✓ Admin secret code updated to: ${codeUpperCase}`);
+
+    res.json({
+      success: true,
+      message: 'Codice admin aggiornato con successo',
+      newCode: codeUpperCase
+    });
+
+  } catch (error) {
+    console.error('Error updating admin code:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// STAFF MANAGEMENT
+// ============================================
+
+// Get all staff members
+app.get('/api/staff', async (req, res) => {
+  try {
+    const staffMembers = await prisma.staff.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const staffList = staffMembers.map(staff => ({
+      id: staff.id,
+      firstName: staff.firstName,
+      lastName: staff.lastName,
+      tableCode: staff.tableCode,
+      permissions: parsePermissions(staff.permissions),
+      isActive: staff.isActive,
+      createdAt: staff.createdAt.toISOString()
+    }));
+
+    res.json({ staff: staffList });
+  } catch (error) {
+    console.error('Error fetching staff:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add new staff member
+app.post('/api/staff', async (req, res) => {
+  try {
+    const { firstName, lastName, password, tableCode, permissions } = req.body;
+
+    // Validate inputs
+    if (!firstName || !lastName || !password || !tableCode) {
+      return res.status(400).json({ error: 'Tutti i campi sono obbligatori' });
+    }
+
+    // Validate password
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({ error: passwordValidation.error });
+    }
+
+    // Validate table code
+    const codeValidation = validateTableCode(tableCode);
+    if (!codeValidation.valid) {
+      return res.status(400).json({ error: codeValidation.error });
+    }
+
+    const codeUpperCase = tableCode.toUpperCase();
+
+    // Check for conflicts
+    const admin = await prisma.admin.findFirst();
+    if (admin && admin.secretTableCode === codeUpperCase) {
+      return res.status(400).json({
+        error: 'Codice in conflitto con il codice admin'
+      });
+    }
+
+    const existingTable = await prisma.table.findUnique({
+      where: { code: codeUpperCase }
+    });
+
+    if (existingTable) {
+      return res.status(400).json({
+        error: 'Codice in conflitto con tavolo di gioco'
+      });
+    }
+
+    const existingStaff = await prisma.staff.findUnique({
+      where: { tableCode: codeUpperCase }
+    });
+
+    if (existingStaff) {
+      return res.status(400).json({
+        error: 'Codice tavolo già in uso da altro staff'
+      });
+    }
+
+    // Hash password
+    const passwordHash = await hashPassword(password);
+
+    // Create staff member
+    const staff = await prisma.staff.create({
+      data: {
+        firstName: sanitizeInput(firstName),
+        lastName: sanitizeInput(lastName),
+        passwordHash,
+        tableCode: codeUpperCase,
+        permissions: serializePermissions(permissions || {})
+      }
+    });
+
+    console.log(`✓ Staff member created: ${firstName} ${lastName} (${codeUpperCase})`);
+
+    res.json({
+      success: true,
+      message: 'Membro staff creato con successo',
+      staff: {
+        id: staff.id,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        tableCode: staff.tableCode,
+        permissions: parsePermissions(staff.permissions)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating staff:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update staff member
+app.put('/api/staff/:id', async (req, res) => {
+  try {
+    const staffId = parseInt(req.params.id);
+    const { firstName, lastName, tableCode, isActive, password } = req.body;
+
+    const staff = await prisma.staff.findUnique({ where: { id: staffId } });
+    if (!staff) {
+      return res.status(404).json({ error: 'Membro staff non trovato' });
+    }
+
+    const updateData: any = {};
+
+    if (firstName) updateData.firstName = sanitizeInput(firstName);
+    if (lastName) updateData.lastName = sanitizeInput(lastName);
+    if (typeof isActive === 'boolean') updateData.isActive = isActive;
+
+    // Update table code if provided and different
+    if (tableCode && tableCode.toUpperCase() !== staff.tableCode) {
+      const codeValidation = validateTableCode(tableCode);
+      if (!codeValidation.valid) {
+        return res.status(400).json({ error: codeValidation.error });
+      }
+
+      const codeUpperCase = tableCode.toUpperCase();
+
+      // Check conflicts
+      const admin = await prisma.admin.findFirst();
+      if (admin && admin.secretTableCode === codeUpperCase) {
+        return res.status(400).json({
+          error: 'Codice in conflitto con codice admin'
+        });
+      }
+
+      const existingStaff = await prisma.staff.findUnique({
+        where: { tableCode: codeUpperCase }
+      });
+
+      if (existingStaff && existingStaff.id !== staffId) {
+        return res.status(400).json({
+          error: 'Codice tavolo già in uso'
+        });
+      }
+
+      updateData.tableCode = codeUpperCase;
+    }
+
+    // Update password if provided
+    if (password) {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.valid) {
+        return res.status(400).json({ error: passwordValidation.error });
+      }
+      updateData.passwordHash = await hashPassword(password);
+    }
+
+    const updatedStaff = await prisma.staff.update({
+      where: { id: staffId },
+      data: updateData
+    });
+
+    console.log(`✓ Staff member updated: ${updatedStaff.firstName} ${updatedStaff.lastName}`);
+
+    res.json({
+      success: true,
+      message: 'Membro staff aggiornato con successo',
+      staff: {
+        id: updatedStaff.id,
+        firstName: updatedStaff.firstName,
+        lastName: updatedStaff.lastName,
+        tableCode: updatedStaff.tableCode,
+        isActive: updatedStaff.isActive
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating staff:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete staff member
+app.delete('/api/staff/:id', async (req, res) => {
+  try {
+    const staffId = parseInt(req.params.id);
+
+    await prisma.staff.delete({ where: { id: staffId } });
+
+    console.log(`✓ Staff member deleted: ID ${staffId}`);
+    res.json({ success: true, message: 'Membro staff eliminato con successo' });
+
+  } catch (error) {
+    console.error('Error deleting staff:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update staff permissions
+app.put('/api/staff/:id/permissions', async (req, res) => {
+  try {
+    const staffId = parseInt(req.params.id);
+    const { permissions } = req.body;
+
+    if (!permissions) {
+      return res.status(400).json({ error: 'Oggetto permessi richiesto' });
+    }
+
+    const staff = await prisma.staff.findUnique({ where: { id: staffId } });
+    if (!staff) {
+      return res.status(404).json({ error: 'Membro staff non trovato' });
+    }
+
+    const updatedStaff = await prisma.staff.update({
+      where: { id: staffId },
+      data: { permissions: serializePermissions(permissions) }
+    });
+
+    console.log(`✓ Permissions updated for staff ID ${staffId}`);
+
+    res.json({
+      success: true,
+      message: 'Permessi aggiornati con successo',
+      permissions: parsePermissions(updatedStaff.permissions)
+    });
+
+  } catch (error) {
+    console.error('Error updating permissions:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -560,9 +1069,9 @@ app.post('/api/send-message', async (req, res) => {
 
     // Sanitizza contenuto
     const sanitizedContent = content
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<[^>]+>/g, '')
-      .trim();
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<[^>]+>/g, '')
+        .trim();
 
     // Verifica stato gioco
     const session = await prisma.gameSession.findUnique({ where: { id: 1 } });
@@ -670,9 +1179,9 @@ app.post('/api/admin/broadcast-message', async (req, res) => {
     }
 
     const sanitizedContent = content
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<[^>]+>/g, '')
-      .trim();
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<[^>]+>/g, '')
+        .trim();
 
     const tables = await prisma.table.findMany();
     let messagesSent = 0;
@@ -872,9 +1381,9 @@ app.get('/api/admin/table-stats', async (req, res) => {
 
     // Converti in array e ordina
     const leaderboard = Object.entries(stats)
-      .map(([tableId, count]) => ({ tableId, messageCount: count }))
-      .sort((a, b) => b.messageCount - a.messageCount)
-      .slice(0, 10);
+        .map(([tableId, count]) => ({ tableId, messageCount: count }))
+        .sort((a, b) => b.messageCount - a.messageCount)
+        .slice(0, 10);
 
     res.json({ leaderboard });
   } catch (error) {
@@ -914,7 +1423,7 @@ async function main() {
 }
 
 main()
-  .catch((e) => {
-    console.error('Failed to start server:', e);
-    process.exit(1);
-  });
+    .catch((e) => {
+      console.error('Failed to start server:', e);
+      process.exit(1);
+    });

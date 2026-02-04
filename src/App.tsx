@@ -4,6 +4,7 @@ import { MessageBoard } from './components/message-board';
 import { ComposeMessage } from './components/compose-message';
 import { AdminPanel } from './components/admin-panel';
 import { TVDisplay } from './components/tv-display';
+import AdminSetup from './components/admin-setup';
 import { toast } from 'sonner@2.0.3';
 import { Toaster } from './components/ui/sonner';
 import { fetchWithRetry, buildApiUrl, getApiHeaders } from './utils/api-helper';
@@ -31,9 +32,12 @@ interface User {
   lastName: string;
   tableCode: string;
   tableNumber: string; // Alfanumerico: A1, B2, DJ, 1, 2, etc.
+  isAdmin?: boolean;
+  isStaff?: boolean;
+  permissions?: any; // Staff permissions object
 }
 
-type AppState = 'login' | 'message-board' | 'compose-message' | 'admin' | 'tv-display';
+type AppState = 'checking-setup' | 'admin-setup' | 'login' | 'message-board' | 'compose-message' | 'admin' | 'tv-display';
 
 // Check for TV display mode in URL immediately (before component renders)
 const checkTVMode = () => {
@@ -42,7 +46,7 @@ const checkTVMode = () => {
 };
 
 export default function App() {
-  const [currentState, setCurrentState] = useState<AppState>(checkTVMode() ? 'tv-display' : 'login');
+  const [currentState, setCurrentState] = useState<AppState>(checkTVMode() ? 'tv-display' : 'checking-setup');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
   const [gameStatus, setGameStatus] = useState<{ status: string; startedAt?: string; pausedAt?: string }>({ status: 'not_started' });
@@ -54,8 +58,8 @@ export default function App() {
   const fetchGameStatus = async () => {
     try {
       const response = await fetchWithRetry(
-        buildApiUrl('game-status'),
-        { headers: getApiHeaders() }
+          buildApiUrl('game-status'),
+          { headers: getApiHeaders() }
       );
 
       if (response.ok) {
@@ -72,8 +76,8 @@ export default function App() {
   const fetchMessages = async (tableNumber: number | string) => {
     try {
       const response = await fetchWithRetry(
-        buildApiUrl(`messages/${tableNumber}`),
-        { headers: getApiHeaders() }
+          buildApiUrl(`messages/${tableNumber}`),
+          { headers: getApiHeaders() }
       );
 
       if (response.ok) {
@@ -115,8 +119,8 @@ export default function App() {
   const fetchAvailableTables = async () => {
     try {
       const response = await fetchWithRetry(
-        buildApiUrl('active-table-numbers'),
-        { headers: getApiHeaders() }
+          buildApiUrl('active-table-numbers'),
+          { headers: getApiHeaders() }
       );
 
       if (response.ok) {
@@ -253,17 +257,17 @@ export default function App() {
 
     try {
       await fetch(
-        buildApiUrl('remove-user-from-table'),
-        {
-          method: 'POST',
-          headers: getApiHeaders(),
-          body: JSON.stringify({
-            tableNumber: currentUser.tableNumber,
-            firstName: currentUser.firstName,
-            lastName: currentUser.lastName
-          }),
-          keepalive: true // Importante per far funzionare la richiesta durante unload
-        }
+          buildApiUrl('remove-user-from-table'),
+          {
+            method: 'POST',
+            headers: getApiHeaders(),
+            body: JSON.stringify({
+              tableNumber: currentUser.tableNumber,
+              firstName: currentUser.firstName,
+              lastName: currentUser.lastName
+            }),
+            keepalive: true // Importante per far funzionare la richiesta durante unload
+          }
       );
     } catch (error) {
       console.error('Error removing user from table:', error);
@@ -283,12 +287,12 @@ export default function App() {
     if (userData.tableCode === '001' && userData.adminPassword) {
       try {
         const response = await fetchWithRetry(
-          buildApiUrl('admin/login'),
-          {
-            method: 'POST',
-            headers: getApiHeaders(),
-            body: JSON.stringify(userData)
-          }
+            buildApiUrl('admin/login'),
+            {
+              method: 'POST',
+              headers: getApiHeaders(),
+              body: JSON.stringify(userData)
+            }
         );
 
         if (response.ok) {
@@ -334,16 +338,16 @@ export default function App() {
     // Add user to table when they log in
     try {
       await fetchWithRetry(
-        buildApiUrl('add-user-to-table'),
-        {
-          method: 'POST',
-          headers: getApiHeaders(),
-          body: JSON.stringify({
-            tableNumber: userData.tableNumber,
-            firstName: userData.firstName,
-            lastName: userData.lastName
-          })
-        }
+          buildApiUrl('add-user-to-table'),
+          {
+            method: 'POST',
+            headers: getApiHeaders(),
+            body: JSON.stringify({
+              tableNumber: userData.tableNumber,
+              firstName: userData.firstName,
+              lastName: userData.lastName
+            })
+          }
       );
     } catch (error) {
       console.error('Error adding user to table:', error);
@@ -375,27 +379,27 @@ export default function App() {
 
     try {
       const response = await fetchWithRetry(
-        buildApiUrl('send-message'),
-        {
-          method: 'POST',
-          headers: getApiHeaders(),
-          body: JSON.stringify({
-            content: messageData.content,
-            fromTable: currentUser.tableNumber,
-            toTable: messageData.toTable,
-            senderName: messageData.senderName || currentUser.firstName,
-            isAnonymous: messageData.isAnonymous
-          })
-        }
+          buildApiUrl('send-message'),
+          {
+            method: 'POST',
+            headers: getApiHeaders(),
+            body: JSON.stringify({
+              content: messageData.content,
+              fromTable: currentUser.tableNumber,
+              toTable: messageData.toTable,
+              senderName: messageData.senderName || currentUser.firstName,
+              isAnonymous: messageData.isAnonymous
+            })
+          }
       );
 
       if (response.ok) {
         setCurrentState('message-board');
         toast.success(
-          `Messaggio inviato al Tavolo ${messageData.toTable}!`,
-          {
-            description: messageData.isAnonymous ? 'Messaggio anonimo' : `Da: ${messageData.senderName || currentUser.firstName}`
-          }
+            `Messaggio inviato al Tavolo ${messageData.toTable}!`,
+            {
+              description: messageData.isAnonymous ? 'Messaggio anonimo' : `Da: ${messageData.senderName || currentUser.firstName}`
+            }
         );
         // Refresh messages immediately after sending
         await fetchMessages(currentUser.tableNumber);
@@ -439,6 +443,41 @@ export default function App() {
     }
   };
 
+  // Check if admin exists on first load
+  useEffect(() => {
+    // Skip if we're in TV display mode
+    if (currentState === 'tv-display') return;
+
+    const checkAdminExists = async () => {
+      try {
+        const response = await fetch(buildApiUrl('admin/exists'), {
+          headers: getApiHeaders()
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+
+          if (!data.exists) {
+            // No admin exists, show setup page
+            setCurrentState('admin-setup');
+          } else {
+            // Admin exists, show normal login page
+            setCurrentState('login');
+          }
+        } else {
+          // Error checking, default to login
+          setCurrentState('login');
+        }
+      } catch (error) {
+        console.error('Error checking admin existence:', error);
+        // On error, default to login page
+        setCurrentState('login');
+      }
+    };
+
+    checkAdminExists();
+  }, []);
+
   // Auto-login on page load if user is saved in localStorage
   // Skip if in TV display mode
   useEffect(() => {
@@ -463,8 +502,8 @@ export default function App() {
 
         // Per utenti normali: verifica che il tavolo esista ancora
         const tableCheckResponse = await fetch(
-          buildApiUrl('table-codes'),
-          { headers: getApiHeaders() }
+            buildApiUrl('table-codes'),
+            { headers: getApiHeaders() }
         );
 
         if (tableCheckResponse.ok) {
@@ -484,16 +523,16 @@ export default function App() {
 
           // Add user back to table
           await fetch(
-            buildApiUrl('add-user-to-table'),
-            {
-              method: 'POST',
-              headers: getApiHeaders(),
-              body: JSON.stringify({
-                tableNumber: userData.tableNumber,
-                firstName: userData.firstName,
-                lastName: userData.lastName
-              })
-            }
+              buildApiUrl('add-user-to-table'),
+              {
+                method: 'POST',
+                headers: getApiHeaders(),
+                body: JSON.stringify({
+                  tableNumber: userData.tableNumber,
+                  firstName: userData.firstName,
+                  lastName: userData.lastName
+                })
+              }
           );
 
           // Load data
@@ -521,8 +560,8 @@ export default function App() {
     const checkTableExists = async () => {
       try {
         const response = await fetch(
-          buildApiUrl('table-codes'),
-          { headers: getApiHeaders() }
+            buildApiUrl('table-codes'),
+            { headers: getApiHeaders() }
         );
 
         if (response.ok) {
@@ -575,16 +614,16 @@ export default function App() {
     const sendHeartbeat = async () => {
       try {
         await fetchWithRetry(
-          buildApiUrl('user-heartbeat'),
-          {
-            method: 'POST',
-            headers: getApiHeaders(),
-            body: JSON.stringify({
-              tableNumber: currentUser.tableNumber,
-              firstName: currentUser.firstName,
-              lastName: currentUser.lastName
-            })
-          }
+            buildApiUrl('user-heartbeat'),
+            {
+              method: 'POST',
+              headers: getApiHeaders(),
+              body: JSON.stringify({
+                tableNumber: currentUser.tableNumber,
+                firstName: currentUser.firstName,
+                lastName: currentUser.lastName
+              })
+            }
         );
       } catch (error) {
         console.error('Heartbeat error:', error);
@@ -642,57 +681,77 @@ export default function App() {
   // Get messages for current table (already filtered by backend)
   const currentTableMessages = allMessages;
 
+  if (currentState === 'checking-setup') {
+    return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin text-4xl">⏳</div>
+        </div>
+    );
+  }
+
+  if (currentState === 'admin-setup') {
+    return (
+        <>
+          <AdminSetup onSetupComplete={handleLogin} />
+          <Toaster />
+        </>
+    );
+  }
+
   if (currentState === 'login') {
     return (
-      <>
-        <LoginForm onLogin={handleLogin} />
-        <Toaster />
-      </>
+        <>
+          <LoginForm onLogin={handleLogin} />
+          <Toaster />
+        </>
     );
   }
 
   if (currentState === 'compose-message' && currentUser) {
     return (
-      <>
-        <ComposeMessage
-          currentTable={currentUser.tableNumber}
-          userFirstName={currentUser.firstName}
-          gameStatus={gameStatus}
-          availableTables={availableTables}
-          onSendMessage={handleSendMessage}
-          onBack={handleBackToBoard}
-        />
-        <Toaster />
-      </>
+        <>
+          <ComposeMessage
+              currentTable={currentUser.tableNumber}
+              userFirstName={currentUser.firstName}
+              gameStatus={gameStatus}
+              availableTables={availableTables}
+              onSendMessage={handleSendMessage}
+              onBack={handleBackToBoard}
+          />
+          <Toaster />
+        </>
     );
   }
 
   if (currentState === 'admin' && currentUser) {
     return (
-      <>
-        <AdminPanel
-          adminName={currentUser.firstName}
-          onLogout={handleLogout}
-        />
-        <Toaster />
-      </>
+        <>
+          <AdminPanel
+              adminName={currentUser.firstName}
+              onLogout={handleLogout}
+              isAdmin={currentUser.isAdmin}
+              isStaff={currentUser.isStaff}
+              permissions={currentUser.permissions}
+          />
+          <Toaster />
+        </>
     );
   }
 
   if (currentState === 'message-board' && currentUser) {
     return (
-      <>
-        <MessageBoard
-          currentTable={currentUser.tableNumber}
-          userFirstName={currentUser.firstName}
-          messages={currentTableMessages}
-          gameStatus={gameStatus}
-          onComposeMessage={handleComposeMessage}
-          onLogout={handleLogout}
-          onRefresh={handleRefresh}
-        />
-        <Toaster />
-      </>
+        <>
+          <MessageBoard
+              currentTable={currentUser.tableNumber}
+              userFirstName={currentUser.firstName}
+              messages={currentTableMessages}
+              gameStatus={gameStatus}
+              onComposeMessage={handleComposeMessage}
+              onLogout={handleLogout}
+              onRefresh={handleRefresh}
+          />
+          <Toaster />
+        </>
     );
   }
 

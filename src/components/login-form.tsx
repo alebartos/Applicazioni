@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
@@ -15,6 +15,9 @@ interface LoginFormProps {
     tableCode: string;
     tableNumber: number;
     adminPassword?: string;
+    isAdmin?: boolean;
+    isStaff?: boolean;
+    permissions?: any;
   }) => void;
 }
 
@@ -25,6 +28,64 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const [adminPassword, setAdminPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [codeType, setCodeType] = useState<'game' | 'admin' | 'staff' | null>(null);
+  const [isCheckingCode, setIsCheckingCode] = useState(false);
+
+  // Check code type dynamically when user types
+  useEffect(() => {
+    const checkCodeType = async () => {
+      if (!tableCode || tableCode.length < 3) {
+        setCodeType(null);
+        return;
+      }
+
+      setIsCheckingCode(true);
+      const codeUpperCase = tableCode.toUpperCase();
+
+      try {
+        // Check if admin code
+        const adminResponse = await fetch(buildApiUrl('admin/profile'), {
+          headers: getApiHeaders()
+        });
+
+        if (adminResponse.ok) {
+          const adminData = await adminResponse.json();
+          if (adminData.profile.secretTableCode === codeUpperCase) {
+            setCodeType('admin');
+            setIsCheckingCode(false);
+            return;
+          }
+        }
+
+        // Check if staff code (try to find staff with this code)
+        const staffResponse = await fetch(buildApiUrl('staff'), {
+          headers: getApiHeaders()
+        });
+
+        if (staffResponse.ok) {
+          const staffData = await staffResponse.json();
+          const isStaffCode = staffData.staff.some((s: any) => s.tableCode === codeUpperCase);
+
+          if (isStaffCode) {
+            setCodeType('staff');
+            setIsCheckingCode(false);
+            return;
+          }
+        }
+
+        // Must be game table code
+        setCodeType('game');
+      } catch (error) {
+        console.error('Error checking code type:', error);
+        setCodeType('game'); // Default to game on error
+      }
+
+      setIsCheckingCode(false);
+    };
+
+    const debounce = setTimeout(checkCodeType, 500);
+    return () => clearTimeout(debounce);
+  }, [tableCode]);
 
   const validateTableCode = async (code: string): Promise<{ valid: boolean; tableNumber?: string; error?: string }> => {
     try {
@@ -59,31 +120,99 @@ export function LoginForm({ onLogin }: LoginFormProps) {
       return;
     }
 
-    // Check if attempting admin login
-    const isAdminAttempt = tableCode.toUpperCase() === '001';
-
-    if (isAdminAttempt) {
-      // Admin login - passa la password al server per validazione
+    // Admin login
+    if (codeType === 'admin') {
       if (!adminPassword.trim()) {
         setError("Password admin richiesta");
         setIsLoading(false);
         return;
       }
 
-      onLogin({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        tableCode: tableCode.toUpperCase(),
-        tableNumber: 0, // Special value for admin
-        adminPassword: adminPassword.trim()
-      });
-      setIsLoading(false);
+      try {
+        const response = await fetch(buildApiUrl('admin/login'), {
+          method: 'POST',
+          headers: getApiHeaders(),
+          body: JSON.stringify({
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            tableCode: tableCode.toUpperCase(),
+            adminPassword: adminPassword.trim()
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          setError(result.error || 'Credenziali non valide');
+          setIsLoading(false);
+          return;
+        }
+
+        // Admin login successful
+        onLogin({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          tableCode: tableCode.toUpperCase(),
+          tableNumber: 0,
+          isAdmin: true,
+          adminPassword: adminPassword.trim()
+        });
+      } catch (error) {
+        console.error('Admin login error:', error);
+        setError('Errore di connessione');
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Staff login
+    if (codeType === 'staff') {
+      if (!adminPassword.trim()) {
+        setError("Password richiesta");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(buildApiUrl('staff/login'), {
+          method: 'POST',
+          headers: getApiHeaders(),
+          body: JSON.stringify({
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            tableCode: tableCode.toUpperCase(),
+            password: adminPassword.trim()
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          setError(result.error || 'Credenziali non valide');
+          setIsLoading(false);
+          return;
+        }
+
+        // Staff login successful
+        onLogin({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          tableCode: tableCode.toUpperCase(),
+          tableNumber: 0,
+          isStaff: true,
+          permissions: result.permissions
+        });
+      } catch (error) {
+        console.error('Staff login error:', error);
+        setError('Errore di connessione');
+        setIsLoading(false);
+      }
       return;
     }
 
     // Regular user - validate table code with backend
     const validation = await validateTableCode(tableCode.toUpperCase());
-    
+
     if (!validation.valid) {
       setError(validation.error || "Codice tavolo non valido");
       setIsLoading(false);
@@ -101,135 +230,161 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-secondary to-accent flex items-center justify-center p-4">
-      <Card className="w-full max-w-md border-primary/20 shadow-lg">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-white p-2 rounded-full shadow-md">
-              <img src={logoImage} alt="Messenger Game" className="w-16 h-16" />
+      <div className="min-h-screen bg-gradient-to-br from-secondary to-accent flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-primary/20 shadow-lg">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="bg-white p-2 rounded-full shadow-md">
+                <img src={logoImage} alt="Messenger Game" className="w-16 h-16" />
+              </div>
             </div>
-          </div>
-          <CardTitle className="text-3xl text-primary">
-            Messenger Game
-          </CardTitle>
-          <CardDescription className="text-lg text-muted-foreground">
-            Inserisci i tuoi dati per accedere al tavolo
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName" className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Nome
-                </Label>
-                <Input
-                  id="firstName"
-                  type="text"
-                  placeholder="Inserisci il tuo nome"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  disabled={isLoading}
-                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="lastName" className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Cognome
-                </Label>
-                <Input
-                  id="lastName"
-                  type="text"
-                  placeholder="Inserisci il tuo cognome"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  disabled={isLoading}
-                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tableCode" className="flex items-center gap-2">
-                  <Lock className="w-4 h-4" />
-                  Codice Tavolo
-                </Label>
-                <Input
-                  id="tableCode"
-                  type="text"
-                  placeholder="Inserisci il codice fornito"
-                  value={tableCode}
-                  onChange={(e) => setTableCode(e.target.value.toUpperCase())}
-                  disabled={isLoading}
-                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/50 font-mono"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Il codice tavolo è fornito dal personale del locale
-                </p>
-              </div>
-
-              {/* Campo Password Admin - visibile solo se codice tavolo è 001 */}
-              {tableCode.toUpperCase() === '001' && (
-                <div className="space-y-2 border-2 border-yellow-200 bg-yellow-50 p-4 rounded-lg">
-                  <Label htmlFor="adminPassword" className="flex items-center gap-2 text-yellow-900">
-                    <Lock className="w-4 h-4" />
-                    Password Admin
+            <CardTitle className="text-3xl text-primary">
+              Messenger Game
+            </CardTitle>
+            <CardDescription className="text-lg text-muted-foreground">
+              Inserisci i tuoi dati per accedere al tavolo
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" className="flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Nome
                   </Label>
                   <Input
-                    id="adminPassword"
-                    type="password"
-                    placeholder="Inserisci password admin"
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    disabled={isLoading}
-                    className="transition-all duration-200 focus:ring-2 focus:ring-yellow-500/50"
+                      id="firstName"
+                      type="text"
+                      placeholder="Inserisci il tuo nome"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      disabled={isLoading}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/50"
                   />
-                  <p className="text-xs text-yellow-800">
-                    ⚠️ Password richiesta per accesso amministratore
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Cognome
+                  </Label>
+                  <Input
+                      id="lastName"
+                      type="text"
+                      placeholder="Inserisci il tuo cognome"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      disabled={isLoading}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="tableCode" className="flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    Codice Tavolo
+                  </Label>
+                  <Input
+                      id="tableCode"
+                      type="text"
+                      placeholder="Inserisci il codice fornito"
+                      value={tableCode}
+                      onChange={(e) => setTableCode(e.target.value.toUpperCase())}
+                      disabled={isLoading}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/50 font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Il codice tavolo è fornito dal personale del locale
                   </p>
                 </div>
-              )}
-            </div>
 
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
-                <p className="text-sm text-destructive">{error}</p>
+                {/* Campo Password - visibile per admin e staff */}
+                {(codeType === 'admin' || codeType === 'staff') && (
+                    <div className={`space-y-2 border-2 p-4 rounded-lg ${
+                        codeType === 'admin'
+                            ? 'border-yellow-200 bg-yellow-50'
+                            : 'border-blue-200 bg-blue-50'
+                    }`}>
+                      <Label
+                          htmlFor="adminPassword"
+                          className={`flex items-center gap-2 ${
+                              codeType === 'admin' ? 'text-yellow-900' : 'text-blue-900'
+                          }`}
+                      >
+                        <Lock className="w-4 h-4" />
+                        Password {codeType === 'admin' ? 'Admin' : 'Staff'}
+                      </Label>
+                      <Input
+                          id="adminPassword"
+                          type="password"
+                          placeholder={`Inserisci password ${codeType === 'admin' ? 'admin' : 'staff'}`}
+                          value={adminPassword}
+                          onChange={(e) => setAdminPassword(e.target.value)}
+                          disabled={isLoading}
+                          className={`transition-all duration-200 focus:ring-2 ${
+                              codeType === 'admin'
+                                  ? 'focus:ring-yellow-500/50'
+                                  : 'focus:ring-blue-500/50'
+                          }`}
+                      />
+                      <p className={`text-xs ${
+                          codeType === 'admin' ? 'text-yellow-800' : 'text-blue-800'
+                      }`}>
+                        {codeType === 'admin'
+                            ? '⚠️ Password richiesta per accesso amministratore'
+                            : '🔒 Password richiesta per accesso staff'
+                        }
+                      </p>
+                    </div>
+                )}
+
+                {/* Loading indicator while checking code */}
+                {isCheckingCode && tableCode.length >= 3 && (
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      <span className="animate-spin">⏳</span>
+                      Verifica codice...
+                    </div>
+                )}
               </div>
-            )}
 
-            <Button 
-              type="submit"
-              disabled={isLoading || !firstName.trim() || !lastName.trim() || !tableCode.trim()}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300"
-            >
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <PaperPlaneLoading />
-                  Accesso in corso...
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  Accedi al Tavolo
-                </div>
+              {error && (
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                    <p className="text-sm text-destructive">{error}</p>
+                  </div>
               )}
-            </Button>
-          </form>
 
-          <div className="mt-6 pt-6 border-t border-border">
-            <div className="text-center space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Il codice tavolo viene fornito dal personale del locale per ogni sessione di gioco
-              </p>
-              <p className="text-xs text-muted-foreground/70">
-                Per accesso admin utilizzare le credenziali fornite dal sistema
-              </p>
+              <Button
+                  type="submit"
+                  disabled={isLoading || !firstName.trim() || !lastName.trim() || !tableCode.trim()}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300"
+              >
+                {isLoading ? (
+                    <div className="flex items-center gap-2">
+                      <PaperPlaneLoading />
+                      Accesso in corso...
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Accedi al Tavolo
+                    </div>
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 pt-6 border-t border-border">
+              <div className="text-center space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Il codice tavolo viene fornito dal personale del locale per ogni sessione di gioco
+                </p>
+                <p className="text-xs text-muted-foreground/70">
+                  Per accesso admin utilizzare le credenziali fornite dal sistema
+                </p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+      </div>
   );
 }

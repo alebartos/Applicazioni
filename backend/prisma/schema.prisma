@@ -87,3 +87,32 @@ model Countdown {
   message   String   @default("Tempo rimanente")
   startedAt DateTime?
 }
+
+// Account amministratore (singleton - solo un admin)
+model Admin {
+  id              Int      @id @default(autoincrement())
+  firstName       String
+  lastName        String
+  passwordHash    String   // Password con hash bcrypt
+  secretTableCode String   @default("001") @unique // Codice segreto per accesso admin
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([secretTableCode])
+}
+
+// Membri dello staff con permessi personalizzati
+model Staff {
+  id           Int      @id @default(autoincrement())
+  firstName    String
+  lastName     String
+  passwordHash String   // Password con hash bcrypt
+  tableCode    String   @unique // Codice personalizzato per ogni staff
+  permissions  String   @default("{}") // JSON con permessi
+  isActive     Boolean  @default(true) // Può essere disabilitato senza eliminarlo
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tableCode])
+  @@index([isActive])
+}
