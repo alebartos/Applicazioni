@@ -10,6 +10,8 @@ Inoltre inizialmente il sito si appoggiava a supabase ma questa dipendenza è st
 [![Docker Pulls](https://img.shields.io/docker/pulls/ale120800/messaggeria?color=blue)](https://hub.docker.com/r/ale120800/messaggeria)
 [![Docker Stars](https://img.shields.io/docker/stars/ale120800/messaggeria?color=orange)](https://hub.docker.com/r/ale120800/messaggeria)
 
+[![CI/CD Pipeline](https://github.com/alebartos/Applicazioni/actions/workflows/ci.yml/badge.svg)](https://github.com/alebartos/Applicazioni/actions/workflows/ci.yml)
+
 ## Avvio Rapido
 Per avviare il container Docker si può seguire una di queste 3 vie:
 <details>
