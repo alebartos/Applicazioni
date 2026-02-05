@@ -370,8 +370,8 @@ app.post('/api/staff/login', loginLimiter, async (req, res) => {
 // ADMIN PROFILE MANAGEMENT
 // ============================================
 
-// Get admin profile (accessibile anche a staff per verificare codice admin)
-app.get('/api/admin/profile', async (req, res) => {
+// Get admin profile (PROTETTO - Solo admin autenticato)
+app.get('/api/admin/profile', requireAuth, requireAdmin, async (req, res) => {
   try {
     const admin = await prisma.admin.findFirst();
 
@@ -383,6 +383,7 @@ app.get('/api/admin/profile', async (req, res) => {
       profile: {
         firstName: admin.firstName,
         lastName: admin.lastName,
+        // ⚠️ secretTableCode NON esposto per sicurezza - solo se sei già autenticato
         secretTableCode: admin.secretTableCode,
         createdAt: admin.createdAt.toISOString()
       }

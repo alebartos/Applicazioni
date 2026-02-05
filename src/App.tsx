@@ -552,13 +552,47 @@ export default function App() {
       try {
         const userData = JSON.parse(savedUser);
 
-        // Se è admin, riconnetti direttamente
-        if (userData.isAdmin) {
-          setCurrentUser(userData);
-          setCurrentState('admin');
-          await fetchGameStatus();
-          toast.info(`Bentornato/a Admin ${userData.firstName}!`);
-          return;
+        // Se è admin o staff, verifica JWT token prima di riconnettere
+        if (userData.isAdmin || userData.isStaff) {
+          const authToken = localStorage.getItem('authToken');
+
+          // ✅ SECURITY: Verifica che esista un JWT token
+          if (!authToken) {
+            console.warn('⚠️ No JWT token found - logging out');
+            localStorage.removeItem('messagingame_user');
+            toast.error('Sessione scaduta. Effettua nuovamente il login.');
+            return;
+          }
+
+          // ✅ SECURITY: Verifica che il JWT token sia valido chiamando un endpoint protetto
+          try {
+            const profileResponse = await fetch(
+                buildApiUrl('admin/profile'),
+                { headers: getApiHeaders() }
+            );
+
+            if (!profileResponse.ok) {
+              // Token non valido o scaduto
+              console.warn('⚠️ JWT token invalid or expired - logging out');
+              localStorage.removeItem('messagingame_user');
+              localStorage.removeItem('authToken');
+              toast.error('Sessione scaduta. Effettua nuovamente il login.');
+              return;
+            }
+
+            // Token valido - riconnetti
+            setCurrentUser(userData);
+            setCurrentState('admin');
+            await fetchGameStatus();
+            toast.info(`Bentornato/a ${userData.isAdmin ? 'Admin' : 'Staff'} ${userData.firstName}!`);
+            return;
+          } catch (error) {
+            console.error('Error validating token:', error);
+            localStorage.removeItem('messagingame_user');
+            localStorage.removeItem('authToken');
+            toast.error('Errore durante la validazione della sessione.');
+            return;
+          }
         }
 
         // Per utenti normali: verifica che il tavolo esista ancora
