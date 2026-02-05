@@ -14,6 +14,10 @@ export const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Enable trust proxy for reverse proxy deployments
+// This allows express-rate-limit to correctly identify clients via X-Forwarded-For
+app.set('trust proxy', true);
+
 // Configurazione admin (richiede variabile d'ambiente)
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
 if (!ADMIN_SECRET) {
