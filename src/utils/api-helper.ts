@@ -18,9 +18,18 @@ export function buildApiUrl(endpoint: string): string {
 
 /**
  * Ottiene gli headers configurati per le chiamate API
+ * Include automaticamente il JWT token se presente
  */
 export function getApiHeaders(): Record<string, string> {
-  return { ...API_CONFIG.headers };
+  const headers = { ...API_CONFIG.headers };
+
+  // ✅ Aggiungi JWT token se presente in localStorage
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return headers;
 }
 
 /**
@@ -31,9 +40,9 @@ export function getApiHeaders(): Record<string, string> {
  * @returns Response
  */
 export async function fetchWithRetry(
-  url: string,
-  options: RequestInit = {},
-  retries = 3
+    url: string,
+    options: RequestInit = {},
+    retries = 3
 ): Promise<Response> {
 
   for (let attempt = 0; attempt < retries; attempt++) {
@@ -76,9 +85,9 @@ export async function fetchWithRetry(
  * Wrapper per chiamate API con gestione errori standard
  */
 export async function apiCall<T>(
-  url: string,
-  options: RequestInit = {},
-  errorMessage = 'Errore durante la richiesta'
+    url: string,
+    options: RequestInit = {},
+    errorMessage = 'Errore durante la richiesta'
 ): Promise<{ success: true; data: T } | { success: false; error: string }> {
   try {
     const response = await fetchWithRetry(url, options);

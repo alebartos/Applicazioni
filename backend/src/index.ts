@@ -1,8 +1,11 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { PrismaClient } from '@prisma/client';
-import { hashPassword, verifyPassword, validatePassword, validateTableCode, sanitizeInput } from './utils/auth';
+import { hashPassword, verifyPassword, validatePassword, validateTableCode, sanitizeInput, sanitizeMessageContent } from './utils/auth';
 import { parsePermissions, serializePermissions, DEFAULT_PERMISSIONS, type StaffPermissions } from './utils/permissions';
+import { generateToken, requireAuth, requireAdmin, requireAdminOrStaff, requirePermission } from './middleware/auth';
 
 // Inizializza Prisma
 export const prisma = new PrismaClient();
@@ -17,13 +20,90 @@ if (!ADMIN_SECRET) {
   console.error('⚠️ ADMIN_SECRET non configurato! Impostalo nel file .env');
 }
 
-// Middleware
+// Configurazione JWT Secret
+if (!process.env.JWT_SECRET) {
+  console.warn('⚠️ JWT_SECRET non configurato! Usando valore di default NON SICURO');
+}
+
+// Configurazione CORS sicura
+const ALLOWED_ORIGINS = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',')
+    : ['http://localhost:5173', 'http://localhost:3000']; // Default per sviluppo
+
+console.log('✓ CORS configurato per:', ALLOWED_ORIGINS);
+
+// ============================================
+// SECURITY MIDDLEWARE
+// ============================================
+
+// Helmet - Security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'https:']
+    }
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+
+// CORS sicuro - Solo domini autorizzati
 app.use(cors({
-  origin: '*',
+  origin: (origin, callback) => {
+    // Permetti richieste senza origin (es. Postman, app mobile)
+    if (!origin) return callback(null, true);
+
+    if (ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ Origin bloccato da CORS: ${origin}`);
+      callback(new Error(`Origin non autorizzato da CORS`));
+    }
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
+
+// Body parser con limite dimensione
+app.use(express.json({ limit: '100kb' })); // Max 100KB per richiesta
+
+// Rate limiting globale
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minuti
+  max: 1000, // Max 1000 richieste per IP
+  message: 'Troppe richieste da questo IP, riprova tra 15 minuti',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Rate limiting per login (più restrittivo)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minuti
+  max: 5, // Max 5 tentativi
+  message: 'Troppi tentativi di login, riprova tra 15 minuti',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true // Non conta i login riusciti
+});
+
+// Rate limiting per admin operations (molto restrittivo)
+const adminLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minuti
+  max: 50, // Max 50 operazioni admin
+  message: 'Troppe operazioni amministrative, riprova tra 5 minuti',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Applica rate limiting globale
+app.use('/api/', globalLimiter);
 
 // Logger middleware
 app.use((req, res, next) => {
@@ -90,9 +170,19 @@ app.post('/api/admin/setup', async (req, res) => {
 
     console.log(`✓ Admin account created: ${firstName} ${lastName}`);
 
+    // ✅ Genera JWT token per auto-login
+    const token = generateToken({
+      id: admin.id,
+      role: 'admin',
+      firstName: admin.firstName,
+      lastName: admin.lastName,
+      tableCode: admin.secretTableCode
+    });
+
     res.json({
       success: true,
       message: 'Account admin creato con successo',
+      token, // ✅ JWT token per auto-login
       admin: {
         id: admin.id,
         firstName: admin.firstName,
@@ -109,7 +199,7 @@ app.post('/api/admin/setup', async (req, res) => {
 // ============================================
 // ADMIN LOGIN
 // ============================================
-app.post('/api/admin/login', async (req, res) => {
+app.post('/api/admin/login', loginLimiter, async (req, res) => {
   try {
     const { firstName, lastName, tableCode, adminPassword } = req.body;
 
@@ -117,6 +207,9 @@ app.post('/api/admin/login', async (req, res) => {
     if (!firstName || !lastName || !tableCode || !adminPassword) {
       return res.status(400).json({ error: 'Tutti i campi sono obbligatori' });
     }
+
+    // ANTI USER ENUMERATION: Usa sempre lo stesso messaggio di errore
+    const GENERIC_ERROR = 'Credenziali non valide';
 
     // Check if it's admin table code
     const admin = await prisma.admin.findUnique({
@@ -129,22 +222,25 @@ app.post('/api/admin/login', async (req, res) => {
           admin.firstName.toLowerCase() === firstName.trim().toLowerCase() &&
           admin.lastName.toLowerCase() === lastName.trim().toLowerCase();
 
-      if (!nameMatch) {
-        return res.status(401).json({
-          success: false,
-          error: 'Credenziali non valide'
-        });
-      }
-
       // Verify password
       const passwordValid = await verifyPassword(adminPassword, admin.passwordHash);
 
-      if (!passwordValid) {
+      // ANTI USER ENUMERATION: Verifica tutto prima di rispondere
+      if (!nameMatch || !passwordValid) {
         return res.status(401).json({
           success: false,
-          error: 'Password non valida'
+          error: GENERIC_ERROR
         });
       }
+
+      // Login SUCCESS - Genera JWT token
+      const token = generateToken({
+        id: admin.id,
+        role: 'admin',
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+        tableCode: admin.secretTableCode
+      });
 
       console.log(`✓ Admin login successful: ${firstName} ${lastName}`);
       return res.json({
@@ -152,6 +248,7 @@ app.post('/api/admin/login', async (req, res) => {
         isAdmin: true,
         role: 'admin',
         permissions: 'all',
+        token, // ✅ JWT token per autenticazione
         message: 'Login effettuato con successo'
       });
     }
@@ -165,20 +262,31 @@ app.post('/api/admin/login', async (req, res) => {
 
       if (isLegacyAdmin) {
         console.warn('⚠️ Using legacy admin authentication - please run admin setup');
+
+        // Genera token per legacy admin
+        const token = generateToken({
+          id: 0, // ID fittizio per legacy
+          role: 'admin',
+          firstName,
+          lastName,
+          tableCode: '001'
+        });
+
         return res.json({
           success: true,
           isAdmin: true,
           role: 'admin',
           permissions: 'all',
+          token,
           message: 'Login effettuato (modalità legacy)'
         });
       }
     }
 
-    // If not admin code, return error
+    // ANTI USER ENUMERATION: Stesso messaggio di errore
     return res.status(401).json({
       success: false,
-      error: 'Credenziali admin non valide'
+      error: GENERIC_ERROR
     });
 
   } catch (error) {
@@ -188,7 +296,7 @@ app.post('/api/admin/login', async (req, res) => {
 });
 
 // Staff login endpoint
-app.post('/api/staff/login', async (req, res) => {
+app.post('/api/staff/login', loginLimiter, async (req, res) => {
   try {
     const { firstName, lastName, tableCode, password } = req.body;
 
@@ -196,17 +304,17 @@ app.post('/api/staff/login', async (req, res) => {
       return res.status(400).json({ error: 'Tutti i campi sono obbligatori' });
     }
 
+    // ANTI USER ENUMERATION: Usa sempre lo stesso messaggio di errore
+    const GENERIC_ERROR = 'Credenziali non valide';
+
     // Find staff by table code
     const staff = await prisma.staff.findUnique({
       where: { tableCode: tableCode.toUpperCase() }
     });
 
-    if (!staff) {
-      return res.status(401).json({ error: 'Credenziali non valide' });
-    }
-
-    if (!staff.isActive) {
-      return res.status(403).json({ error: 'Account disabilitato' });
+    // ANTI USER ENUMERATION: Verifica tutto prima di rispondere
+    if (!staff || !staff.isActive) {
+      return res.status(401).json({ error: GENERIC_ERROR });
     }
 
     // Verify name matches (case-insensitive)
@@ -214,19 +322,26 @@ app.post('/api/staff/login', async (req, res) => {
         staff.firstName.toLowerCase() === firstName.trim().toLowerCase() &&
         staff.lastName.toLowerCase() === lastName.trim().toLowerCase();
 
-    if (!nameMatch) {
-      return res.status(401).json({ error: 'Credenziali non valide' });
-    }
-
     // Verify password
     const passwordValid = await verifyPassword(password, staff.passwordHash);
 
-    if (!passwordValid) {
-      return res.status(401).json({ error: 'Password non valida' });
+    // ANTI USER ENUMERATION: Verifica tutto prima di rispondere
+    if (!nameMatch || !passwordValid) {
+      return res.status(401).json({ error: GENERIC_ERROR });
     }
 
     // Parse permissions
     const permissions = parsePermissions(staff.permissions);
+
+    // Login SUCCESS - Genera JWT token
+    const token = generateToken({
+      id: staff.id,
+      role: 'staff',
+      firstName: staff.firstName,
+      lastName: staff.lastName,
+      tableCode: staff.tableCode,
+      permissions
+    });
 
     console.log(`✓ Staff login successful: ${firstName} ${lastName} (${tableCode})`);
 
@@ -236,6 +351,7 @@ app.post('/api/staff/login', async (req, res) => {
       isStaff: true,
       role: 'staff',
       permissions,
+      token, // ✅ JWT token per autenticazione
       message: 'Login effettuato con successo'
     });
 
@@ -249,7 +365,7 @@ app.post('/api/staff/login', async (req, res) => {
 // ADMIN PROFILE MANAGEMENT
 // ============================================
 
-// Get admin profile
+// Get admin profile (accessibile anche a staff per verificare codice admin)
 app.get('/api/admin/profile', async (req, res) => {
   try {
     const admin = await prisma.admin.findFirst();
@@ -272,8 +388,8 @@ app.get('/api/admin/profile', async (req, res) => {
   }
 });
 
-// Update admin secret table code
-app.put('/api/admin/secret-code', async (req, res) => {
+// Update admin secret table code (PROTETTO - Solo admin)
+app.put('/api/admin/secret-code', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { newCode } = req.body;
 
@@ -338,7 +454,7 @@ app.put('/api/admin/secret-code', async (req, res) => {
 // STAFF MANAGEMENT
 // ============================================
 
-// Get all staff members
+// Get all staff members (accessibile anche per verificare codici staff nel login)
 app.get('/api/staff', async (req, res) => {
   try {
     const staffMembers = await prisma.staff.findMany({
@@ -362,8 +478,8 @@ app.get('/api/staff', async (req, res) => {
   }
 });
 
-// Add new staff member
-app.post('/api/staff', async (req, res) => {
+// Add new staff member (PROTETTO - Solo admin)
+app.post('/api/staff', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { firstName, lastName, password, tableCode, permissions } = req.body;
 
@@ -448,10 +564,10 @@ app.post('/api/staff', async (req, res) => {
   }
 });
 
-// Update staff member
-app.put('/api/staff/:id', async (req, res) => {
+// Update staff member (PROTETTO - Solo admin)
+app.put('/api/staff/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const staffId = parseInt(req.params.id);
+    const staffId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
     const { firstName, lastName, tableCode, isActive, password } = req.body;
 
     const staff = await prisma.staff.findUnique({ where: { id: staffId } });
@@ -529,10 +645,10 @@ app.put('/api/staff/:id', async (req, res) => {
   }
 });
 
-// Delete staff member
-app.delete('/api/staff/:id', async (req, res) => {
+// Delete staff member (PROTETTO - Solo admin)
+app.delete('/api/staff/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const staffId = parseInt(req.params.id);
+    const staffId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
 
     await prisma.staff.delete({ where: { id: staffId } });
 
@@ -545,10 +661,10 @@ app.delete('/api/staff/:id', async (req, res) => {
   }
 });
 
-// Update staff permissions
-app.put('/api/staff/:id/permissions', async (req, res) => {
+// Update staff permissions (PROTETTO - Solo admin)
+app.put('/api/staff/:id/permissions', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const staffId = parseInt(req.params.id);
+    const staffId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
     const { permissions } = req.body;
 
     if (!permissions) {
@@ -681,8 +797,8 @@ app.get('/api/game-status', async (req, res) => {
   }
 });
 
-// Start game
-app.post('/api/admin/start-game', async (req, res) => {
+// Start game (PROTETTO - requirePermission manage_game_state)
+app.post('/api/admin/start-game', requireAuth, requirePermission('manage_game_state'), adminLimiter, async (req, res) => {
   try {
     const session = await prisma.gameSession.findUnique({ where: { id: 1 } });
 
@@ -703,8 +819,8 @@ app.post('/api/admin/start-game', async (req, res) => {
   }
 });
 
-// Pause game
-app.post('/api/admin/pause-game', async (req, res) => {
+// Pause game (PROTETTO - requirePermission manage_game_state)
+app.post('/api/admin/pause-game', requireAuth, requirePermission('manage_game_state'), adminLimiter, async (req, res) => {
   try {
     const session = await prisma.gameSession.findUnique({ where: { id: 1 } });
 
@@ -724,8 +840,8 @@ app.post('/api/admin/pause-game', async (req, res) => {
   }
 });
 
-// Resume game
-app.post('/api/admin/resume-game', async (req, res) => {
+// Resume game (PROTETTO - requirePermission manage_game_state)
+app.post('/api/admin/resume-game', requireAuth, requirePermission('manage_game_state'), adminLimiter, async (req, res) => {
   try {
     const session = await prisma.gameSession.findUnique({ where: { id: 1 } });
 
@@ -745,8 +861,8 @@ app.post('/api/admin/resume-game', async (req, res) => {
   }
 });
 
-// End game
-app.post('/api/admin/end-game', async (req, res) => {
+// End game (PROTETTO - requirePermission manage_game_state)
+app.post('/api/admin/end-game', requireAuth, requirePermission('manage_game_state'), adminLimiter, async (req, res) => {
   try {
     await prisma.gameSession.upsert({
       where: { id: 1 },
@@ -761,8 +877,8 @@ app.post('/api/admin/end-game', async (req, res) => {
   }
 });
 
-// Reset game
-app.post('/api/admin/reset-game', async (req, res) => {
+// Reset game (PROTETTO - Solo admin - OPERAZIONE DISTRUTTIVA)
+app.post('/api/admin/reset-game', requireAuth, requireAdmin, adminLimiter, async (req, res) => {
   try {
     // Reset game status
     await prisma.gameSession.upsert({
@@ -788,8 +904,8 @@ app.post('/api/admin/reset-game', async (req, res) => {
 // ADMIN - TABLE MANAGEMENT
 // ============================================
 
-// Create table code
-app.post('/api/admin/create-table-code', async (req, res) => {
+// Create table code (PROTETTO - requirePermission manage_tables)
+app.post('/api/admin/create-table-code', requireAuth, requirePermission('manage_tables'), adminLimiter, async (req, res) => {
   try {
     const { tableNumber, code } = req.body;
 
@@ -821,10 +937,10 @@ app.post('/api/admin/create-table-code', async (req, res) => {
   }
 });
 
-// Delete table
-app.delete('/api/admin/delete-table/:tableNumber', async (req, res) => {
+// Delete table (PROTETTO - requirePermission manage_tables)
+app.delete('/api/admin/delete-table/:tableNumber', requireAuth, requirePermission('manage_tables'), adminLimiter, async (req, res) => {
   try {
-    const tableId = req.params.tableNumber;
+    const tableId = Array.isArray(req.params.tableNumber) ? req.params.tableNumber[0] : req.params.tableNumber;
 
     await prisma.table.delete({
       where: { id: tableId }
@@ -837,8 +953,8 @@ app.delete('/api/admin/delete-table/:tableNumber', async (req, res) => {
   }
 });
 
-// Get all messages (admin)
-app.get('/api/admin/all-messages', async (req, res) => {
+// Get all messages (PROTETTO - requirePermission view_messages)
+app.get('/api/admin/all-messages', requireAuth, requirePermission('view_messages'), async (req, res) => {
   try {
     const messages = await prisma.message.findMany({
       orderBy: { timestamp: 'desc' }
@@ -869,8 +985,8 @@ app.get('/api/admin/all-messages', async (req, res) => {
   }
 });
 
-// Get active tables (admin)
-app.get('/api/admin/active-tables', async (req, res) => {
+// Get active tables (PROTETTO - requirePermission view_users)
+app.get('/api/admin/active-tables', requireAuth, requirePermission('view_users'), async (req, res) => {
   try {
     const tables = await prisma.table.findMany({
       include: {
@@ -1067,11 +1183,8 @@ app.post('/api/send-message', async (req, res) => {
       return res.status(404).json({ error: 'Tavolo destinatario non esiste' });
     }
 
-    // Sanitizza contenuto
-    const sanitizedContent = content
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/<[^>]+>/g, '')
-        .trim();
+    // ✅ Sanitizza contenuto con sanitizeMessageContent per protezione XSS completa
+    const sanitizedContent = sanitizeMessageContent(content);
 
     // Verifica stato gioco
     const session = await prisma.gameSession.findUnique({ where: { id: 1 } });
@@ -1161,8 +1274,8 @@ app.get('/api/active-table-numbers', async (req, res) => {
   }
 });
 
-// Broadcast message (admin)
-app.post('/api/admin/broadcast-message', async (req, res) => {
+// Broadcast message (PROTETTO - requirePermission send_broadcast)
+app.post('/api/admin/broadcast-message', requireAuth, requirePermission('send_broadcast'), adminLimiter, async (req, res) => {
   try {
     const { content } = req.body;
 
@@ -1178,10 +1291,8 @@ app.post('/api/admin/broadcast-message', async (req, res) => {
       return res.status(400).json({ error: 'Messaggio troppo lungo (max 500 caratteri)' });
     }
 
-    const sanitizedContent = content
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/<[^>]+>/g, '')
-        .trim();
+    // ✅ Usa sanitizeMessageContent per protezione XSS completa
+    const sanitizedContent = sanitizeMessageContent(content);
 
     const tables = await prisma.table.findMany();
     let messagesSent = 0;

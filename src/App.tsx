@@ -282,8 +282,58 @@ export default function App() {
     tableCode: string;
     tableNumber: number;
     adminPassword?: string;
+    isAdmin?: boolean;
+    isStaff?: boolean;
+    permissions?: any;
   }) => {
-    // Tentativo login admin (se c'è password)
+    // ✅ Login Admin (diretto da login form con isAdmin già verificato)
+    if (userData.isAdmin) {
+      setCurrentUser({
+        ...userData,
+        tableNumber: String(userData.tableNumber)
+      });
+      setCurrentState('admin');
+
+      // Non chiama più API perché il login è già stato fatto in login-form
+      // Il token è già stato passato tramite onLogin
+      // Salviamo solo il token qui se presente (dal risultato del login)
+
+      // Save admin to localStorage
+      localStorage.setItem('messagingame_user', JSON.stringify({
+        ...userData,
+        isAdmin: true
+      }));
+
+      await fetchGameStatus();
+      toast.success(`Benvenuto Admin ${userData.firstName}!`, {
+        description: 'Accesso al pannello di amministrazione'
+      });
+      return;
+    }
+
+    // ✅ Login Staff (diretto da login form con isStaff già verificato)
+    if (userData.isStaff) {
+      setCurrentUser({
+        ...userData,
+        tableNumber: String(userData.tableNumber)
+      });
+      setCurrentState('admin'); // Staff accede comunque alla dashboard admin (con permessi limitati)
+
+      // Save staff to localStorage
+      localStorage.setItem('messagingame_user', JSON.stringify({
+        ...userData,
+        isStaff: true,
+        permissions: userData.permissions
+      }));
+
+      await fetchGameStatus();
+      toast.success(`Benvenuto ${userData.firstName}!`, {
+        description: 'Accesso alla dashboard staff'
+      });
+      return;
+    }
+
+    // FALLBACK: Tentativo login admin legacy (se c'è password e codice 001)
     if (userData.tableCode === '001' && userData.adminPassword) {
       try {
         const response = await fetchWithRetry(
@@ -299,8 +349,16 @@ export default function App() {
           const result = await response.json();
 
           if (result.isAdmin) {
-            setCurrentUser(userData);
+            setCurrentUser({
+              ...userData,
+              tableNumber: String(userData.tableNumber)
+            });
             setCurrentState('admin');
+
+            // ✅ Save JWT token to localStorage
+            if (result.token) {
+              localStorage.setItem('authToken', result.token);
+            }
 
             // Save admin to localStorage
             localStorage.setItem('messagingame_user', JSON.stringify({
@@ -326,7 +384,10 @@ export default function App() {
     }
 
     // Login normale utente
-    setCurrentUser(userData);
+    setCurrentUser({
+      ...userData,
+      tableNumber: String(userData.tableNumber)
+    });
     setCurrentState('message-board');
 
     // Save user to localStorage

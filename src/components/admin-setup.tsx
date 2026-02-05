@@ -77,6 +77,11 @@ export default function AdminSetup({ onSetupComplete }: AdminSetupProps) {
                 return;
             }
 
+            // ✅ Save JWT token to localStorage
+            if (result.token) {
+                localStorage.setItem('authToken', result.token);
+            }
+
             // Success!
             toast.success('Account admin creato con successo!', {
                 description: `Codice admin: ${result.admin.secretTableCode}`

@@ -1,4 +1,5 @@
 import bcrypt from 'bcrypt';
+import sanitizeHtml from 'sanitize-html';
 
 const SALT_ROUNDS = 10;
 
@@ -18,18 +19,31 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 
 /**
  * Valida la robustezza di una password
+ * Requisiti: min 8 caratteri, almeno una maiuscola, una minuscola, un numero
  */
 export function validatePassword(password: string): { valid: boolean; error?: string } {
     if (!password || typeof password !== 'string') {
         return { valid: false, error: 'Password richiesta' };
     }
 
-    if (password.length < 6) {
-        return { valid: false, error: 'Password deve essere di almeno 6 caratteri' };
+    if (password.length < 8) {
+        return { valid: false, error: 'Password deve essere di almeno 8 caratteri' };
     }
 
     if (password.length > 100) {
         return { valid: false, error: 'Password troppo lunga (max 100 caratteri)' };
+    }
+
+    // Verifica complessità: almeno una maiuscola, una minuscola, un numero
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+
+    if (!hasUpperCase || !hasLowerCase || !hasNumber) {
+        return {
+            valid: false,
+            error: 'Password deve contenere almeno una maiuscola, una minuscola e un numero'
+        };
     }
 
     return { valid: true };
@@ -62,11 +76,38 @@ export function validateTableCode(code: string): { valid: boolean; error?: strin
 }
 
 /**
- * Sanitizza input testuale
+ * Sanitizza input testuale rimuovendo completamente HTML e tag pericolosi
+ * Usa sanitize-html per protezione completa contro XSS
  */
 export function sanitizeInput(input: string): string {
-    return input
-        .trim()
-        .replace(/[<>]/g, '') // Rimuove < e >
-        .substring(0, 100); // Lunghezza massima
+    if (!input || typeof input !== 'string') {
+        return '';
+    }
+
+    // Rimuove completamente tutti i tag HTML
+    const sanitized = sanitizeHtml(input, {
+        allowedTags: [], // Non permette NESSUN tag HTML
+        allowedAttributes: {}, // Non permette attributi
+        disallowedTagsMode: 'recursiveEscape' // Escape ricorsivo dei tag non permessi
+    });
+
+    return sanitized.trim().substring(0, 100); // Lunghezza massima
+}
+
+/**
+ * Sanitizza contenuto messaggi (permette formattazione base sicura)
+ */
+export function sanitizeMessageContent(input: string): string {
+    if (!input || typeof input !== 'string') {
+        return '';
+    }
+
+    // Permette solo formattazione base sicura
+    const sanitized = sanitizeHtml(input, {
+        allowedTags: ['b', 'i', 'em', 'strong', 'br'], // Solo tag di formattazione base
+        allowedAttributes: {}, // Nessun attributo permesso
+        disallowedTagsMode: 'recursiveEscape'
+    });
+
+    return sanitized.trim().substring(0, 500); // Max 500 caratteri per messaggi
 }

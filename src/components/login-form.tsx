@@ -148,6 +148,11 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           return;
         }
 
+        // ✅ Save JWT token to localStorage
+        if (result.token) {
+          localStorage.setItem('authToken', result.token);
+        }
+
         // Admin login successful
         onLogin({
           firstName: firstName.trim(),
@@ -191,6 +196,11 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           setError(result.error || 'Credenziali non valide');
           setIsLoading(false);
           return;
+        }
+
+        // ✅ Save JWT token to localStorage
+        if (result.token) {
+          localStorage.setItem('authToken', result.token);
         }
 
         // Staff login successful
