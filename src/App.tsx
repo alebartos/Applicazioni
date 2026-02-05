@@ -288,15 +288,40 @@ export default function App() {
   }) => {
     // ✅ Login Admin (diretto da login form con isAdmin già verificato)
     if (userData.isAdmin) {
+      // 🔒 SECURITY: Verifica il JWT token con il backend PRIMA di mostrare la dashboard
+      // Questo previene il bypass dove l'attaccante modifica la risposta 401->200
+      const authToken = localStorage.getItem('authToken');
+
+      if (!authToken) {
+        toast.error('Errore di autenticazione: token mancante');
+        return;
+      }
+
+      try {
+        const verifyResponse = await fetch(buildApiUrl('admin/profile'), {
+          headers: getApiHeaders()
+        });
+
+        if (!verifyResponse.ok) {
+          // Token invalido o fake - non procedere
+          localStorage.removeItem('authToken');
+          toast.error('Autenticazione fallita. Riprova.');
+          return;
+        }
+
+        // Token valido - ora possiamo procedere
+      } catch (error) {
+        console.error('Error verifying admin token:', error);
+        localStorage.removeItem('authToken');
+        toast.error('Errore di verifica autenticazione');
+        return;
+      }
+
       setCurrentUser({
         ...userData,
         tableNumber: String(userData.tableNumber)
       });
       setCurrentState('admin');
-
-      // Non chiama più API perché il login è già stato fatto in login-form
-      // Il token è già stato passato tramite onLogin
-      // Salviamo solo il token qui se presente (dal risultato del login)
 
       // Save admin to localStorage
       localStorage.setItem('messagingame_user', JSON.stringify({
@@ -313,6 +338,32 @@ export default function App() {
 
     // ✅ Login Staff (diretto da login form con isStaff già verificato)
     if (userData.isStaff) {
+      // 🔒 SECURITY: Verifica il JWT token con il backend PRIMA di mostrare la dashboard
+      const authToken = localStorage.getItem('authToken');
+
+      if (!authToken) {
+        toast.error('Errore di autenticazione: token mancante');
+        return;
+      }
+
+      try {
+        // Verifica il token chiamando un endpoint protetto
+        const verifyResponse = await fetch(buildApiUrl('admin/active-tables'), {
+          headers: getApiHeaders()
+        });
+
+        if (!verifyResponse.ok) {
+          localStorage.removeItem('authToken');
+          toast.error('Autenticazione staff fallita. Riprova.');
+          return;
+        }
+      } catch (error) {
+        console.error('Error verifying staff token:', error);
+        localStorage.removeItem('authToken');
+        toast.error('Errore di verifica autenticazione');
+        return;
+      }
+
       setCurrentUser({
         ...userData,
         tableNumber: String(userData.tableNumber)
