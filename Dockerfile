@@ -92,11 +92,10 @@ stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
-environment=NODE_ENV="production",PORT="3001",DATABASE_URL="file:/app/data/messaging-game.db",ADMIN_SECRET="%(ENV_ADMIN_SECRET)s"
+environment=NODE_ENV="production",PORT="3001",DATABASE_URL="file:/app/data/messaging-game.db"
 EOF
 
 ENV NODE_ENV=production
-ENV ADMIN_SECRET=MESSAGINGAME2025!ADMIN
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
