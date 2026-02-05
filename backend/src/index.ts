@@ -15,8 +15,9 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Enable trust proxy for reverse proxy deployments
+// Trust only the first proxy (nginx in our case) - more secure than 'true'
 // This allows express-rate-limit to correctly identify clients via X-Forwarded-For
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 // Configurazione admin (richiede variabile d'ambiente)
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
