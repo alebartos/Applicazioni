@@ -32,7 +32,7 @@ if (!process.env.JWT_SECRET) {
 // Configurazione CORS sicura
 const ALLOWED_ORIGINS = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',')
-    : ['http://localhost:5173', 'http://localhost:3000']; // Default per sviluppo
+    : ['http://localhost:5173', 'http://localhost:3000', 'https://messaggeria.duckdns.org']; // Default: sviluppo + produzione
 
 console.log('✓ CORS configurato per:', ALLOWED_ORIGINS);
 
