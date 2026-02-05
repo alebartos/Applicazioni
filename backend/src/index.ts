@@ -367,6 +367,64 @@ app.post('/api/staff/login', loginLimiter, async (req, res) => {
 });
 
 // ============================================
+// CODE TYPE CHECK (PUBBLICO MA SICURO)
+// ============================================
+
+// Check code type for login form - richiede nome+cognome+codice per sicurezza
+// Non espone informazioni sensibili, restituisce solo il tipo di codice
+app.post('/api/check-code-type', async (req, res) => {
+  try {
+    const { firstName, lastName, tableCode } = req.body;
+
+    // Tutti i campi sono richiesti per sicurezza (anti brute-force sul solo codice)
+    if (!firstName || !lastName || !tableCode) {
+      return res.json({ codeType: 'game' }); // Default sicuro
+    }
+
+    const codeUpperCase = tableCode.toUpperCase();
+    const firstNameLower = firstName.trim().toLowerCase();
+    const lastNameLower = lastName.trim().toLowerCase();
+
+    // Check if admin code AND name matches
+    const admin = await prisma.admin.findUnique({
+      where: { secretTableCode: codeUpperCase }
+    });
+
+    if (admin) {
+      const adminNameMatch =
+          admin.firstName.toLowerCase() === firstNameLower &&
+          admin.lastName.toLowerCase() === lastNameLower;
+
+      if (adminNameMatch) {
+        return res.json({ codeType: 'admin' });
+      }
+    }
+
+    // Check if staff code AND name matches
+    const staff = await prisma.staff.findUnique({
+      where: { tableCode: codeUpperCase }
+    });
+
+    if (staff && staff.isActive) {
+      const staffNameMatch =
+          staff.firstName.toLowerCase() === firstNameLower &&
+          staff.lastName.toLowerCase() === lastNameLower;
+
+      if (staffNameMatch) {
+        return res.json({ codeType: 'staff' });
+      }
+    }
+
+    // Default: game table code (o credenziali non corrispondenti)
+    return res.json({ codeType: 'game' });
+
+  } catch (error) {
+    console.error('Error checking code type:', error);
+    return res.json({ codeType: 'game' }); // Default sicuro in caso di errore
+  }
+});
+
+// ============================================
 // ADMIN PROFILE MANAGEMENT
 // ============================================
 

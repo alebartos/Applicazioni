@@ -31,50 +31,35 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const [codeType, setCodeType] = useState<'game' | 'admin' | 'staff' | null>(null);
   const [isCheckingCode, setIsCheckingCode] = useState(false);
 
-  // Check code type dynamically when user types
+  // Check code type dynamically when user types - richiede nome+cognome+codice
   useEffect(() => {
     const checkCodeType = async () => {
-      if (!tableCode || tableCode.length < 3) {
+      // Richiede tutti e tre i campi per verificare il tipo (sicurezza anti brute-force)
+      if (!tableCode || tableCode.length < 3 || !firstName.trim() || !lastName.trim()) {
         setCodeType(null);
         return;
       }
 
       setIsCheckingCode(true);
-      const codeUpperCase = tableCode.toUpperCase();
 
       try {
-        // Check if admin code
-        const adminResponse = await fetch(buildApiUrl('admin/profile'), {
-          headers: getApiHeaders()
+        // Usa il nuovo endpoint sicuro che verifica nome+cognome+codice insieme
+        const response = await fetch(buildApiUrl('check-code-type'), {
+          method: 'POST',
+          headers: getApiHeaders(),
+          body: JSON.stringify({
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            tableCode: tableCode.toUpperCase()
+          })
         });
 
-        if (adminResponse.ok) {
-          const adminData = await adminResponse.json();
-          if (adminData.profile.secretTableCode === codeUpperCase) {
-            setCodeType('admin');
-            setIsCheckingCode(false);
-            return;
-          }
+        if (response.ok) {
+          const data = await response.json();
+          setCodeType(data.codeType || 'game');
+        } else {
+          setCodeType('game');
         }
-
-        // Check if staff code (try to find staff with this code)
-        const staffResponse = await fetch(buildApiUrl('staff'), {
-          headers: getApiHeaders()
-        });
-
-        if (staffResponse.ok) {
-          const staffData = await staffResponse.json();
-          const isStaffCode = staffData.staff.some((s: any) => s.tableCode === codeUpperCase);
-
-          if (isStaffCode) {
-            setCodeType('staff');
-            setIsCheckingCode(false);
-            return;
-          }
-        }
-
-        // Must be game table code
-        setCodeType('game');
       } catch (error) {
         console.error('Error checking code type:', error);
         setCodeType('game'); // Default to game on error
@@ -85,7 +70,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
 
     const debounce = setTimeout(checkCodeType, 500);
     return () => clearTimeout(debounce);
-  }, [tableCode]);
+  }, [tableCode, firstName, lastName]);
 
   const validateTableCode = async (code: string): Promise<{ valid: boolean; tableNumber?: string; error?: string }> => {
     try {
