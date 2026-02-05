@@ -19,12 +19,6 @@ const PORT = process.env.PORT || 3001;
 // This allows express-rate-limit to correctly identify clients via X-Forwarded-For
 app.set('trust proxy', 1);
 
-// Configurazione admin (richiede variabile d'ambiente)
-const ADMIN_SECRET = process.env.ADMIN_SECRET;
-if (!ADMIN_SECRET) {
-  console.error('⚠️ ADMIN_SECRET non configurato! Impostalo nel file .env');
-}
-
 // Configurazione JWT Secret
 if (!process.env.JWT_SECRET) {
   console.warn('⚠️ JWT_SECRET non configurato! Usando valore di default NON SICURO');
@@ -103,6 +97,15 @@ const adminLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minuti
   max: 50, // Max 50 operazioni admin
   message: 'Troppe operazioni amministrative, riprova tra 5 minuti',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Rate limiting per messaggi e reazioni (anti-spam)
+const messageLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 20, // Max 20 messaggi/reazioni al minuto per IP
+  message: 'Troppi messaggi inviati, attendi un minuto',
   standardHeaders: true,
   legacyHeaders: false
 });
@@ -256,36 +259,6 @@ app.post('/api/admin/login', loginLimiter, async (req, res) => {
         token, // ✅ JWT token per autenticazione
         message: 'Login effettuato con successo'
       });
-    }
-
-    // Fallback to legacy hardcoded credentials (backward compatibility)
-    if (ADMIN_SECRET) {
-      const isLegacyAdmin = (
-          (firstName === 'Matteo' && lastName === 'Polverino') ||
-          (firstName === 'Alessandro' && lastName === 'Bartolini')
-      ) && tableCode === '001' && adminPassword === ADMIN_SECRET;
-
-      if (isLegacyAdmin) {
-        console.warn('⚠️ Using legacy admin authentication - please run admin setup');
-
-        // Genera token per legacy admin
-        const token = generateToken({
-          id: 0, // ID fittizio per legacy
-          role: 'admin',
-          firstName,
-          lastName,
-          tableCode: '001'
-        });
-
-        return res.json({
-          success: true,
-          isAdmin: true,
-          role: 'admin',
-          permissions: 'all',
-          token,
-          message: 'Login effettuato (modalità legacy)'
-        });
-      }
     }
 
     // ANTI USER ENUMERATION: Stesso messaggio di errore
@@ -518,8 +491,8 @@ app.put('/api/admin/secret-code', requireAuth, requireAdmin, async (req, res) =>
 // STAFF MANAGEMENT
 // ============================================
 
-// Get all staff members (accessibile anche per verificare codici staff nel login)
-app.get('/api/staff', async (req, res) => {
+// Get all staff members (PROTETTO - Solo admin)
+app.get('/api/staff', requireAuth, requireAdmin, async (req, res) => {
   try {
     const staffMembers = await prisma.staff.findMany({
       orderBy: { createdAt: 'desc' }
@@ -793,8 +766,8 @@ app.post('/api/validate-table-code', async (req, res) => {
   }
 });
 
-// Get all table codes (admin)
-app.get('/api/table-codes', async (req, res) => {
+// Get all table codes (PROTETTO - richiede autenticazione)
+app.get('/api/table-codes', requireAuth, async (req, res) => {
   try {
     const tables = await prisma.table.findMany({
       select: { id: true, code: true }
@@ -808,28 +781,6 @@ app.get('/api/table-codes', async (req, res) => {
     res.json({ tableCodes });
   } catch (error) {
     console.error('Error fetching table codes:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Debug endpoint
-app.get('/api/debug-keys', async (req, res) => {
-  try {
-    const tables = await prisma.table.findMany();
-
-    const tableCodes = tables.map(t => ({
-      key: `table:${t.id}:code`,
-      tableNumber: t.id,
-      code: t.code
-    }));
-
-    res.json({
-      message: 'Debug endpoint',
-      count: tableCodes.length,
-      tableCodes
-    });
-  } catch (error) {
-    console.error('Error in debug-keys:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1210,8 +1161,8 @@ app.get('/api/table-users/:tableNumber', async (req, res) => {
 // MESSAGES
 // ============================================
 
-// Send message
-app.post('/api/send-message', async (req, res) => {
+// Send message (con rate limiting anti-spam)
+app.post('/api/send-message', messageLimiter, async (req, res) => {
   try {
     const { content, fromTable, toTable, senderName, isAnonymous } = req.body;
 
@@ -1391,8 +1342,8 @@ app.post('/api/admin/broadcast-message', requireAuth, requirePermission('send_br
   }
 });
 
-// Add reaction
-app.post('/api/add-reaction', async (req, res) => {
+// Add reaction (con rate limiting anti-spam)
+app.post('/api/add-reaction', messageLimiter, async (req, res) => {
   try {
     const { messageId, reaction, tableNumber } = req.body;
 
@@ -1483,7 +1434,7 @@ app.get('/api/countdown', async (req, res) => {
   }
 });
 
-app.post('/api/admin/set-countdown', async (req, res) => {
+app.post('/api/admin/set-countdown', requireAuth, requirePermission('manage_countdown'), async (req, res) => {
   try {
     const { minutes, message } = req.body;
 
@@ -1517,7 +1468,7 @@ app.post('/api/admin/set-countdown', async (req, res) => {
   }
 });
 
-app.post('/api/admin/stop-countdown', async (req, res) => {
+app.post('/api/admin/stop-countdown', requireAuth, requirePermission('manage_countdown'), async (req, res) => {
   try {
     await prisma.countdown.upsert({
       where: { id: 1 },
@@ -1536,7 +1487,7 @@ app.post('/api/admin/stop-countdown', async (req, res) => {
 // TABLE STATS (Leaderboard)
 // ============================================
 
-app.get('/api/admin/table-stats', async (req, res) => {
+app.get('/api/admin/table-stats', requireAuth, requirePermission('view_leaderboard'), async (req, res) => {
   try {
     const messages = await prisma.message.findMany({
       where: {

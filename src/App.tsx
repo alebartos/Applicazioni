@@ -648,13 +648,13 @@ export default function App() {
 
         // Per utenti normali: verifica che il tavolo esista ancora
         const tableCheckResponse = await fetch(
-            buildApiUrl('table-codes'),
+            buildApiUrl('active-table-numbers'),
             { headers: getApiHeaders() }
         );
 
         if (tableCheckResponse.ok) {
-          const { tableCodes } = await tableCheckResponse.json();
-          const tableExists = tableCodes.some((t: any) => t.tableNumber === userData.tableNumber);
+          const { tableNumbers } = await tableCheckResponse.json();
+          const tableExists = tableNumbers.includes(userData.tableNumber);
 
           if (!tableExists) {
             // Tavolo eliminato, fare logout
@@ -706,13 +706,13 @@ export default function App() {
     const checkTableExists = async () => {
       try {
         const response = await fetch(
-            buildApiUrl('table-codes'),
+            buildApiUrl('active-table-numbers'),
             { headers: getApiHeaders() }
         );
 
         if (response.ok) {
-          const { tableCodes } = await response.json();
-          const tableExists = tableCodes.some((t: any) => t.tableNumber === currentUser.tableNumber);
+          const { tableNumbers } = await response.json();
+          const tableExists = tableNumbers.includes(currentUser.tableNumber);
 
           if (!tableExists) {
             // Tavolo eliminato/resettato - logout forzato
