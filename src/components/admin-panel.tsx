@@ -755,55 +755,55 @@ export function AdminPanel({ adminName, onLogout, isAdmin = true, isStaff = fals
             <Tabs defaultValue="tables" className="space-y-4 sm:space-y-6">
               <TabsList className="flex flex-wrap justify-center gap-1 h-auto p-2 bg-muted/50 rounded-lg">
                 {hasPermission('manage_tables') && (
-                    <TabsTrigger value="tables" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                    <TabsTrigger value="tables" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
                       <Table className="w-4 h-4 mr-1.5" />
                       Tavoli
                     </TabsTrigger>
                 )}
                 {hasPermission('view_users') && (
-                    <TabsTrigger value="users" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                    <TabsTrigger value="users" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
                       <Users className="w-4 h-4 mr-1.5" />
                       Utenti
                     </TabsTrigger>
                 )}
                 {hasPermission('view_messages') && (
-                    <TabsTrigger value="messages" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                    <TabsTrigger value="messages" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
                       <MessageCircle className="w-4 h-4 mr-1.5" />
                       Messaggi
                     </TabsTrigger>
                 )}
                 {hasPermission('send_broadcast') && (
-                    <TabsTrigger value="broadcast" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                    <TabsTrigger value="broadcast" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
                       <Radio className="w-4 h-4 mr-1.5" />
                       Broadcast
                     </TabsTrigger>
                 )}
                 {hasPermission('manage_countdown') && (
-                    <TabsTrigger value="countdown" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                    <TabsTrigger value="countdown" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
                       <Clock className="w-4 h-4 mr-1.5" />
                       Countdown
                     </TabsTrigger>
                 )}
                 {hasPermission('view_leaderboard') && (
-                    <TabsTrigger value="leaderboard" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                    <TabsTrigger value="leaderboard" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
                       <Trophy className="w-4 h-4 mr-1.5" />
                       Classifica
                     </TabsTrigger>
                 )}
                 {hasPermission('manage_challenges') && (
-                    <TabsTrigger value="challenges" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                    <TabsTrigger value="challenges" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
                       <Trophy className="w-4 h-4 mr-1.5" />
                       Sfide
                     </TabsTrigger>
                 )}
                 {isAdmin && (
-                    <TabsTrigger value="profilo" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                    <TabsTrigger value="profilo" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
                       <User className="w-4 h-4 mr-1.5" />
                       Profilo
                     </TabsTrigger>
                 )}
                 {hasPermission('manage_tv') && (
-                    <TabsTrigger value="tv-display" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                    <TabsTrigger value="tv-display" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
                       <Radio className="w-4 h-4 mr-1.5" />
                       TV Display
                     </TabsTrigger>
@@ -1147,83 +1147,85 @@ export function AdminPanel({ adminName, onLogout, isAdmin = true, isStaff = fals
 
               {/* Leaderboard */}
               <TabsContent value="leaderboard">
-                <Card>
-                  <CardHeader className="px-4 sm:px-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                          <Trophy className="w-5 h-5 text-yellow-500" />
-                          Classifica Tavoli
-                        </CardTitle>
-                        <CardDescription className="text-sm">
-                          Top 10 tavoli - Punteggi: msg (0.5pt) | ❤️ (2pt) | 🔥 (1.5pt) | 👍 (1pt) | 😂 (0.5pt)
-                        </CardDescription>
+                <div className="max-w-2xl mx-auto">
+                  <Card>
+                    <CardHeader className="px-4 sm:px-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="text-center sm:text-left">
+                          <CardTitle className="text-base sm:text-lg flex items-center justify-center sm:justify-start gap-2">
+                            <Trophy className="w-5 h-5 text-yellow-500" />
+                            Classifica Tavoli
+                          </CardTitle>
+                          <CardDescription className="text-sm mt-1">
+                            Top 10 tavoli - Punteggi: msg (0.5pt) | ❤️ (2pt) | 🔥 (1.5pt) | 👍 (1pt) | 😂 (0.5pt)
+                          </CardDescription>
+                        </div>
+                        <Button
+                            onClick={fetchLeaderboard}
+                            variant="outline"
+                            size="sm"
+                            className="min-h-[36px] w-full sm:w-auto"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Aggiorna
+                        </Button>
                       </div>
-                      <Button
-                          onClick={fetchLeaderboard}
-                          variant="outline"
-                          size="sm"
-                          className="min-h-[36px] w-full sm:w-auto"
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Aggiorna
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="px-4 sm:px-6">
-                    <ScrollArea className="h-80 sm:h-96">
-                      {leaderboard.length > 0 ? (
-                          <div className="space-y-3 pr-4">
-                            {leaderboard.map((entry, index) => (
-                                <div
-                                    key={entry.tableId}
-                                    className={`flex items-center justify-between gap-3 p-3 sm:p-4 border rounded-lg overflow-hidden ${
-                                        index === 0 ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-300' :
-                                            index === 1 ? 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-300' :
-                                                index === 2 ? 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-300' :
-                                                    'bg-background'
-                                    }`}
-                                >
-                                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                                    <div className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full font-bold text-xs sm:text-sm flex-shrink-0 ${
-                                        index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                                            index === 1 ? 'bg-gray-400 text-gray-900' :
-                                                index === 2 ? 'bg-orange-400 text-orange-900' :
-                                                    'bg-muted text-muted-foreground'
-                                    }`}>
-                                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="font-semibold text-sm sm:text-base truncate">Tavolo {entry.tableId}</div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {entry.points} {entry.points === 1 ? 'punto' : 'punti'}
+                    </CardHeader>
+                    <CardContent className="px-4 sm:px-6">
+                      <ScrollArea className="h-80 sm:h-[450px]">
+                        {leaderboard.length > 0 ? (
+                            <div className="space-y-3 pr-4">
+                              {leaderboard.map((entry, index) => (
+                                  <div
+                                      key={entry.tableId}
+                                      className={`flex items-center justify-between gap-3 p-3 sm:p-4 border rounded-lg overflow-hidden ${
+                                          index === 0 ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-300' :
+                                              index === 1 ? 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-300' :
+                                                  index === 2 ? 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-300' :
+                                                      'bg-background'
+                                      }`}
+                                  >
+                                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                      <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full font-bold text-sm sm:text-base flex-shrink-0 ${
+                                          index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                                              index === 1 ? 'bg-gray-400 text-gray-900' :
+                                                  index === 2 ? 'bg-orange-400 text-orange-900' :
+                                                      'bg-muted text-muted-foreground'
+                                      }`}>
+                                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <div className="font-semibold text-sm sm:text-base truncate">Tavolo {entry.tableId}</div>
+                                        <div className="text-xs sm:text-sm text-muted-foreground">
+                                          {entry.points} {entry.points === 1 ? 'punto' : 'punti'}
+                                        </div>
                                       </div>
                                     </div>
+                                    <Badge variant="secondary" className="text-sm sm:text-base px-3 py-1 flex-shrink-0 font-semibold">
+                                      {entry.points}
+                                    </Badge>
                                   </div>
-                                  <Badge variant="secondary" className="text-xs sm:text-sm flex-shrink-0">
-                                    {entry.points}
-                                  </Badge>
-                                </div>
-                            ))}
-                          </div>
-                      ) : (
-                          <div className="text-center text-muted-foreground py-12">
-                            <Trophy className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                            <p className="text-sm">Nessun punteggio ancora</p>
-                            <p className="text-xs mt-1">La classifica apparirà quando i tavoli inizieranno a inviare messaggi e ricevere reazioni</p>
-                          </div>
-                      )}
-                    </ScrollArea>
-                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        <p className="text-xs text-green-800">
-                          Aggiornamento automatico ogni 10 secondi
-                        </p>
+                              ))}
+                            </div>
+                        ) : (
+                            <div className="text-center text-muted-foreground py-12">
+                              <Trophy className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                              <p className="text-base font-medium">Nessun punteggio ancora</p>
+                              <p className="text-sm mt-2">La classifica apparirà quando i tavoli inizieranno a inviare messaggi e ricevere reazioni</p>
+                            </div>
+                        )}
+                      </ScrollArea>
+                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                          <p className="text-xs sm:text-sm text-green-800">
+                            Aggiornamento automatico ogni 10 secondi
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
 
               {/* Challenges Management */}
