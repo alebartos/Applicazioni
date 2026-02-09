@@ -753,62 +753,64 @@ export function AdminPanel({ adminName, onLogout, isAdmin = true, isStaff = fals
 
             {/* Main Content */}
             <Tabs defaultValue="tables" className="space-y-4 sm:space-y-6">
-              <TabsList className="flex flex-wrap justify-center gap-1 h-auto p-2 bg-muted/50 rounded-lg">
-                {hasPermission('manage_tables') && (
-                    <TabsTrigger value="tables" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
-                      <Table className="w-4 h-4 mr-1.5" />
-                      Tavoli
-                    </TabsTrigger>
-                )}
-                {hasPermission('view_users') && (
-                    <TabsTrigger value="users" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
-                      <Users className="w-4 h-4 mr-1.5" />
-                      Utenti
-                    </TabsTrigger>
-                )}
-                {hasPermission('view_messages') && (
-                    <TabsTrigger value="messages" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
-                      <MessageCircle className="w-4 h-4 mr-1.5" />
-                      Messaggi
-                    </TabsTrigger>
-                )}
-                {hasPermission('send_broadcast') && (
-                    <TabsTrigger value="broadcast" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
-                      <Radio className="w-4 h-4 mr-1.5" />
-                      Broadcast
-                    </TabsTrigger>
-                )}
-                {hasPermission('manage_countdown') && (
-                    <TabsTrigger value="countdown" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
-                      <Clock className="w-4 h-4 mr-1.5" />
-                      Countdown
-                    </TabsTrigger>
-                )}
-                {hasPermission('view_leaderboard') && (
-                    <TabsTrigger value="leaderboard" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
-                      <Trophy className="w-4 h-4 mr-1.5" />
-                      Classifica
-                    </TabsTrigger>
-                )}
-                {hasPermission('manage_challenges') && (
-                    <TabsTrigger value="challenges" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
-                      <Trophy className="w-4 h-4 mr-1.5" />
-                      Sfide
-                    </TabsTrigger>
-                )}
-                {isAdmin && (
-                    <TabsTrigger value="profilo" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
-                      <User className="w-4 h-4 mr-1.5" />
-                      Profilo
-                    </TabsTrigger>
-                )}
-                {hasPermission('manage_tv') && (
-                    <TabsTrigger value="tv-display" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
-                      <Radio className="w-4 h-4 mr-1.5" />
-                      TV Display
-                    </TabsTrigger>
-                )}
-              </TabsList>
+              <div className="flex justify-center">
+                <TabsList className="inline-flex flex-wrap justify-center gap-1 h-auto p-2 bg-muted/50 rounded-lg">
+                  {hasPermission('manage_tables') && (
+                      <TabsTrigger value="tables" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                        <Table className="w-4 h-4 mr-1.5" />
+                        Tavoli
+                      </TabsTrigger>
+                  )}
+                  {hasPermission('view_users') && (
+                      <TabsTrigger value="users" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                        <Users className="w-4 h-4 mr-1.5" />
+                        Utenti
+                      </TabsTrigger>
+                  )}
+                  {hasPermission('view_messages') && (
+                      <TabsTrigger value="messages" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                        <MessageCircle className="w-4 h-4 mr-1.5" />
+                        Messaggi
+                      </TabsTrigger>
+                  )}
+                  {hasPermission('send_broadcast') && (
+                      <TabsTrigger value="broadcast" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                        <Radio className="w-4 h-4 mr-1.5" />
+                        Broadcast
+                      </TabsTrigger>
+                  )}
+                  {hasPermission('manage_countdown') && (
+                      <TabsTrigger value="countdown" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                        <Clock className="w-4 h-4 mr-1.5" />
+                        Countdown
+                      </TabsTrigger>
+                  )}
+                  {hasPermission('view_leaderboard') && (
+                      <TabsTrigger value="leaderboard" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                        <Trophy className="w-4 h-4 mr-1.5" />
+                        Classifica
+                      </TabsTrigger>
+                  )}
+                  {hasPermission('manage_challenges') && (
+                      <TabsTrigger value="challenges" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                        <Trophy className="w-4 h-4 mr-1.5" />
+                        Sfide
+                      </TabsTrigger>
+                  )}
+                  {isAdmin && (
+                      <TabsTrigger value="profilo" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                        <User className="w-4 h-4 mr-1.5" />
+                        Profilo
+                      </TabsTrigger>
+                  )}
+                  {hasPermission('manage_tv') && (
+                      <TabsTrigger value="tv-display" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                        <Radio className="w-4 h-4 mr-1.5" />
+                        TV Display
+                      </TabsTrigger>
+                  )}
+                </TabsList>
+              </div>
 
               {/* Tables Management */}
               <TabsContent value="tables">
@@ -1149,30 +1151,17 @@ export function AdminPanel({ adminName, onLogout, isAdmin = true, isStaff = fals
               <TabsContent value="leaderboard">
                 <div className="max-w-2xl mx-auto">
                   <Card>
-                    <CardHeader className="px-4 sm:px-6">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="text-center sm:text-left">
-                          <CardTitle className="text-base sm:text-lg flex items-center justify-center sm:justify-start gap-2">
-                            <Trophy className="w-5 h-5 text-yellow-500" />
-                            Classifica Tavoli
-                          </CardTitle>
-                          <CardDescription className="text-sm mt-1">
-                            Top 10 tavoli - Punteggi: msg (0.5pt) | ❤️ (2pt) | 🔥 (1.5pt) | 👍 (1pt) | 😂 (0.5pt)
-                          </CardDescription>
-                        </div>
-                        <Button
-                            onClick={fetchLeaderboard}
-                            variant="outline"
-                            size="sm"
-                            className="min-h-[36px] w-full sm:w-auto"
-                        >
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Aggiorna
-                        </Button>
-                      </div>
+                    <CardHeader className="px-4 sm:px-6 text-center">
+                      <CardTitle className="text-lg sm:text-xl flex items-center justify-center gap-2">
+                        <Trophy className="w-6 h-6 text-yellow-500" />
+                        Classifica Tavoli
+                      </CardTitle>
+                      <CardDescription className="text-sm mt-2">
+                        Top 10 tavoli - Punteggi: msg (0.5pt) | ❤️ (2pt) | 🔥 (1.5pt) | 👍 (1pt) | 😂 (0.5pt)
+                      </CardDescription>
                     </CardHeader>
                     <CardContent className="px-4 sm:px-6">
-                      <ScrollArea className="h-80 sm:h-[450px]">
+                      <ScrollArea className="h-80 sm:h-[400px]">
                         {leaderboard.length > 0 ? (
                             <div className="space-y-3 pr-4">
                               {leaderboard.map((entry, index) => (
@@ -1215,6 +1204,17 @@ export function AdminPanel({ adminName, onLogout, isAdmin = true, isStaff = fals
                             </div>
                         )}
                       </ScrollArea>
+
+                      {/* Button at bottom */}
+                      <Button
+                          onClick={fetchLeaderboard}
+                          variant="outline"
+                          className="w-full mt-4 min-h-[44px]"
+                      >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Aggiorna Classifica
+                      </Button>
+
                       <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <div className="flex items-center justify-center gap-2">
                           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
