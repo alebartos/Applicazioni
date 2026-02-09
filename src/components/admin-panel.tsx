@@ -753,58 +753,58 @@ export function AdminPanel({ adminName, onLogout, isAdmin = true, isStaff = fals
 
             {/* Main Content */}
             <Tabs defaultValue="tables" className="space-y-4 sm:space-y-6">
-              <TabsList className="grid w-full grid-cols-4 lg:grid-cols-9 h-auto gap-1">
+              <TabsList className="flex flex-wrap justify-center gap-1 h-auto p-2 bg-muted/50 rounded-lg">
                 {hasPermission('manage_tables') && (
-                    <TabsTrigger value="tables" className="text-xs sm:text-sm px-2 py-3">
-                      <Table className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                      <span className="hidden sm:inline">Gestione </span>Tavoli
+                    <TabsTrigger value="tables" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                      <Table className="w-4 h-4 mr-1.5" />
+                      Tavoli
                     </TabsTrigger>
                 )}
                 {hasPermission('view_users') && (
-                    <TabsTrigger value="users" className="text-xs sm:text-sm px-2 py-3">
-                      <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                      <span className="hidden sm:inline">Utenti</span><span className="sm:hidden">Utenti</span>
+                    <TabsTrigger value="users" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                      <Users className="w-4 h-4 mr-1.5" />
+                      Utenti
                     </TabsTrigger>
                 )}
                 {hasPermission('view_messages') && (
-                    <TabsTrigger value="messages" className="text-xs sm:text-sm px-2 py-3">
-                      <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <TabsTrigger value="messages" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                      <MessageCircle className="w-4 h-4 mr-1.5" />
                       Messaggi
                     </TabsTrigger>
                 )}
                 {hasPermission('send_broadcast') && (
-                    <TabsTrigger value="broadcast" className="text-xs sm:text-sm px-2 py-3">
-                      <Radio className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <TabsTrigger value="broadcast" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                      <Radio className="w-4 h-4 mr-1.5" />
                       Broadcast
                     </TabsTrigger>
                 )}
                 {hasPermission('manage_countdown') && (
-                    <TabsTrigger value="countdown" className="text-xs sm:text-sm px-2 py-3">
-                      <Clock className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <TabsTrigger value="countdown" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                      <Clock className="w-4 h-4 mr-1.5" />
                       Countdown
                     </TabsTrigger>
                 )}
                 {hasPermission('view_leaderboard') && (
-                    <TabsTrigger value="leaderboard" className="text-xs sm:text-sm px-2 py-3">
-                      <Trophy className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <TabsTrigger value="leaderboard" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                      <Trophy className="w-4 h-4 mr-1.5" />
                       Classifica
                     </TabsTrigger>
                 )}
                 {hasPermission('manage_challenges') && (
-                    <TabsTrigger value="challenges" className="text-xs sm:text-sm px-2 py-3">
-                      <Trophy className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <TabsTrigger value="challenges" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                      <Trophy className="w-4 h-4 mr-1.5" />
                       Sfide
                     </TabsTrigger>
                 )}
                 {isAdmin && (
-                    <TabsTrigger value="profilo" className="text-xs sm:text-sm px-2 py-3">
-                      <User className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <TabsTrigger value="profilo" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                      <User className="w-4 h-4 mr-1.5" />
                       Profilo
                     </TabsTrigger>
                 )}
                 {hasPermission('manage_tv') && (
-                    <TabsTrigger value="tv-display" className="text-xs sm:text-sm px-2 py-3">
-                      <Radio className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                    <TabsTrigger value="tv-display" className="text-xs px-3 py-2 data-[state=active]:bg-background">
+                      <Radio className="w-4 h-4 mr-1.5" />
                       TV Display
                     </TabsTrigger>
                 )}

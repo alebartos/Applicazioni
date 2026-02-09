@@ -286,9 +286,9 @@ export default function App() {
     isStaff?: boolean;
     permissions?: any;
   }) => {
-    // ✅ Login Admin (diretto da login form con isAdmin già verificato)
+    // Login Admin (diretto da login form con isAdmin già verificato)
     if (userData.isAdmin) {
-      // 🔒 SECURITY: Verifica il JWT token con il backend PRIMA di mostrare la dashboard
+      // SECURITY: Verifica il JWT token con il backend PRIMA di mostrare la dashboard
       // Questo previene il bypass dove l'attaccante modifica la risposta 401->200
       const authToken = localStorage.getItem('authToken');
 
