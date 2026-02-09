@@ -756,55 +756,55 @@ export function AdminPanel({ adminName, onLogout, isAdmin = true, isStaff = fals
               <div className="flex justify-center">
                 <TabsList className="inline-flex flex-wrap justify-center gap-1 h-auto p-2 bg-muted/50 rounded-lg">
                   {hasPermission('manage_tables') && (
-                      <TabsTrigger value="tables" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                      <TabsTrigger value="tables" className="text-xs px-3 py-2 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-md transition-all duration-200">
                         <Table className="w-4 h-4 mr-1.5" />
                         Tavoli
                       </TabsTrigger>
                   )}
                   {hasPermission('view_users') && (
-                      <TabsTrigger value="users" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                      <TabsTrigger value="users" className="text-xs px-3 py-2 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-md transition-all duration-200">
                         <Users className="w-4 h-4 mr-1.5" />
                         Utenti
                       </TabsTrigger>
                   )}
                   {hasPermission('view_messages') && (
-                      <TabsTrigger value="messages" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                      <TabsTrigger value="messages" className="text-xs px-3 py-2 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-md transition-all duration-200">
                         <MessageCircle className="w-4 h-4 mr-1.5" />
                         Messaggi
                       </TabsTrigger>
                   )}
                   {hasPermission('send_broadcast') && (
-                      <TabsTrigger value="broadcast" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                      <TabsTrigger value="broadcast" className="text-xs px-3 py-2 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-md transition-all duration-200">
                         <Radio className="w-4 h-4 mr-1.5" />
                         Broadcast
                       </TabsTrigger>
                   )}
                   {hasPermission('manage_countdown') && (
-                      <TabsTrigger value="countdown" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                      <TabsTrigger value="countdown" className="text-xs px-3 py-2 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-md transition-all duration-200">
                         <Clock className="w-4 h-4 mr-1.5" />
                         Countdown
                       </TabsTrigger>
                   )}
                   {hasPermission('view_leaderboard') && (
-                      <TabsTrigger value="leaderboard" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                      <TabsTrigger value="leaderboard" className="text-xs px-3 py-2 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-md transition-all duration-200">
                         <Trophy className="w-4 h-4 mr-1.5" />
                         Classifica
                       </TabsTrigger>
                   )}
                   {hasPermission('manage_challenges') && (
-                      <TabsTrigger value="challenges" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                      <TabsTrigger value="challenges" className="text-xs px-3 py-2 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-md transition-all duration-200">
                         <Trophy className="w-4 h-4 mr-1.5" />
                         Sfide
                       </TabsTrigger>
                   )}
                   {isAdmin && (
-                      <TabsTrigger value="profilo" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                      <TabsTrigger value="profilo" className="text-xs px-3 py-2 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-md transition-all duration-200">
                         <User className="w-4 h-4 mr-1.5" />
                         Profilo
                       </TabsTrigger>
                   )}
                   {hasPermission('manage_tv') && (
-                      <TabsTrigger value="tv-display" className="text-xs px-3 py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200">
+                      <TabsTrigger value="tv-display" className="text-xs px-3 py-2 data-[state=active]:!bg-primary data-[state=active]:!text-primary-foreground data-[state=active]:!shadow-md transition-all duration-200">
                         <Radio className="w-4 h-4 mr-1.5" />
                         TV Display
                       </TabsTrigger>
