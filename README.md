@@ -31,7 +31,7 @@ docker run -d \
 <summary>Build Locale</summary>
 
 ```bash
-git clone <tuo-repo> messaggeria
+git clone https://github.com/alebartos/Applicazioni.git messaggeria
 cd messaggeria
 docker build --no-cache -t messaggeria .
 docker run -d \
