@@ -32,7 +32,7 @@ docker run -d \
 
 ```bash
 git clone https://github.com/alebartos/Applicazioni.git messaggeria
-cd messaggeria
+cd ./messaggeria
 docker build --no-cache -t messaggeria .
 docker run -d \
   --name messaggeria \
