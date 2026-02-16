@@ -1,9 +1,9 @@
 # Gioco Messaggeria
 Questo gioco è stato sviluppato per portare una moderna versione della messaggeria al DADAZEN a Camerino; Ed è stato recentemente testato durante un paio di serate reali.
 
-Inizialmente l'app era stata pensata per essere gestita da due admin non modificabili ma per adattarsi meglio al progetto di Applicazioni Web e stata inserita la possibilità di registrarsi al primo avvio come admin e scegliere la propria password (quindi abbiamo aggiunto piu o meno 1500 righe di codice a quello che era l'app originale);
+Inizialmente l'app era stata pensata per essere gestita da due admin non modificabili ma per adattarsi meglio al progetto di Applicazioni Web è stata inserita la possibilità di registrarsi al primo avvio come admin e scegliere la propria password (quindi abbiamo aggiunto più o meno 1500 righe di codice a quello che era l'app originale);
 
-Inoltre inizialmente il sito si appoggiava a supabase ma questa dipendenza è stata rimossa attraverso un database interno.
+Inoltre, inizialmente il sito si appoggiava a supabase, ma questa dipendenza è stata rimossa attraverso un database interno.
 
 
 [![Docker Image Size (latest)](https://img.shields.io/docker/image-size/ale120800/messaggeria/latest?color=green)](https://hub.docker.com/r/ale120800/messaggeria)
