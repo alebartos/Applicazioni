@@ -1615,7 +1615,7 @@ app.post('/api/admin/create-challenge', requireAuth, requirePermission('manage_c
 // POST /api/admin/end-challenge/:id - Termina sfida manualmente (admin/staff con permesso)
 app.post('/api/admin/end-challenge/:id', requireAuth, requirePermission('manage_challenges'), async (req, res) => {
   try {
-    const challengeId = parseInt(req.params.id);
+    const challengeId = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
 
     if (isNaN(challengeId)) {
       return res.status(400).json({ error: 'ID sfida non valido' });
