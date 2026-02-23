@@ -62,42 +62,58 @@ function DialogContent({
   return (
       <DialogPortal data-slot="dialog-portal">
         <DialogOverlay />
-        <DialogPrimitive.Content
-            data-slot="dialog-content"
-            className={cn(
-                "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 z-50 grid w-full max-w-2xl gap-4 rounded-lg border shadow-lg duration-200",
-                className,
-            )}
+        {/* Wrapper scrollabile che centra il contenuto */}
+        <div
             style={{
               position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              padding: '1.5rem',
-              maxWidth: 'calc(100% - 2rem)',
-              ...style,
+              inset: 0,
+              zIndex: 50,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflowY: 'auto',
+              padding: '1rem',
+              pointerEvents: 'none',
             }}
-            {...props}
         >
-          {children}
-          <DialogPrimitive.Close
+          <DialogPrimitive.Content
+              data-slot="dialog-content"
+              className={cn(
+                  "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 grid w-full max-w-2xl gap-4 rounded-lg border shadow-lg duration-200",
+                  className,
+              )}
               style={{
-                position: 'absolute',
-                top: '1rem',
-                right: '1rem',
-                opacity: 0.7,
-                borderRadius: '0.25rem',
-                cursor: 'pointer',
-                background: 'none',
-                border: 'none',
-                padding: '0.25rem',
+                position: 'relative',
+                padding: '1.5rem',
+                maxWidth: 'calc(100% - 2rem)',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                pointerEvents: 'auto',
+                margin: 'auto',
+                ...style,
               }}
-              className="transition-opacity hover:opacity-100 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0"
+              {...props}
           >
-            <XIcon style={{ width: '1rem', height: '1rem' }} />
-            <span style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', borderWidth: 0 }}>Close</span>
-          </DialogPrimitive.Close>
-        </DialogPrimitive.Content>
+            {children}
+            <DialogPrimitive.Close
+                style={{
+                  position: 'absolute',
+                  top: '1rem',
+                  right: '1rem',
+                  opacity: 0.7,
+                  borderRadius: '0.25rem',
+                  cursor: 'pointer',
+                  background: 'none',
+                  border: 'none',
+                  padding: '0.25rem',
+                }}
+                className="transition-opacity hover:opacity-100 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0"
+            >
+              <XIcon style={{ width: '1rem', height: '1rem' }} />
+              <span style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', borderWidth: 0 }}>Close</span>
+            </DialogPrimitive.Close>
+          </DialogPrimitive.Content>
+        </div>
       </DialogPortal>
   );
 }

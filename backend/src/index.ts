@@ -1519,6 +1519,199 @@ app.get('/api/admin/table-stats', requireAuth, requirePermission('view_leaderboa
 });
 
 // ============================================
+// CHALLENGES (SFIDE)
+// ============================================
+
+// GET /api/challenges/active - Sfide attive (accessibile da tutti gli autenticati e giocatori)
+app.get('/api/challenges/active', async (req, res) => {
+  try {
+    // Auto-disattiva sfide scadute
+    await prisma.challenge.updateMany({
+      where: {
+        active: true,
+        endsAt: { lt: new Date() }
+      },
+      data: { active: false }
+    });
+
+    const challenges = await prisma.challenge.findMany({
+      where: { active: true },
+      orderBy: { startedAt: 'desc' }
+    });
+
+    res.json({
+      challenges: challenges.map(c => ({
+        id: String(c.id),
+        title: c.title,
+        description: c.description,
+        type: c.type,
+        active: c.active,
+        badgeName: c.badgeName,
+        badgeEmoji: c.badgeEmoji,
+        startedAt: c.startedAt.toISOString(),
+        endsAt: c.endsAt.toISOString(),
+        winner: c.winner
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching active challenges:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/admin/create-challenge - Crea nuova sfida (admin/staff con permesso)
+app.post('/api/admin/create-challenge', requireAuth, requirePermission('manage_challenges'), async (req, res) => {
+  try {
+    const { title, description, type, durationMinutes, badgeName, badgeEmoji } = req.body;
+
+    if (!title || !badgeName) {
+      return res.status(400).json({ error: 'Titolo e nome badge sono obbligatori' });
+    }
+
+    const duration = parseInt(durationMinutes);
+    if (isNaN(duration) || duration < 1 || duration > 60) {
+      return res.status(400).json({ error: 'Durata non valida (1-60 minuti)' });
+    }
+
+    const validTypes = ['most_messages', 'most_reactions', 'speed'];
+    if (type && !validTypes.includes(type)) {
+      return res.status(400).json({ error: 'Tipo sfida non valido' });
+    }
+
+    const now = new Date();
+    const endsAt = new Date(now.getTime() + duration * 60 * 1000);
+
+    const challenge = await prisma.challenge.create({
+      data: {
+        title: sanitizeInput(title),
+        description: sanitizeInput(description || ''),
+        type: type || 'most_messages',
+        badgeName: sanitizeInput(badgeName),
+        badgeEmoji: badgeEmoji || '🏆',
+        startedAt: now,
+        endsAt
+      }
+    });
+
+    console.log(`✓ Sfida creata: "${challenge.title}" (${duration} min)`);
+
+    res.json({
+      id: String(challenge.id),
+      title: challenge.title,
+      description: challenge.description,
+      type: challenge.type,
+      active: challenge.active,
+      badgeName: challenge.badgeName,
+      badgeEmoji: challenge.badgeEmoji,
+      startedAt: challenge.startedAt.toISOString(),
+      endsAt: challenge.endsAt.toISOString()
+    });
+  } catch (error) {
+    console.error('Error creating challenge:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/admin/end-challenge/:id - Termina sfida manualmente (admin/staff con permesso)
+app.post('/api/admin/end-challenge/:id', requireAuth, requirePermission('manage_challenges'), async (req, res) => {
+  try {
+    const challengeId = parseInt(req.params.id);
+
+    if (isNaN(challengeId)) {
+      return res.status(400).json({ error: 'ID sfida non valido' });
+    }
+
+    const challenge = await prisma.challenge.findUnique({
+      where: { id: challengeId }
+    });
+
+    if (!challenge) {
+      return res.status(404).json({ error: 'Sfida non trovata' });
+    }
+
+    if (!challenge.active) {
+      return res.status(400).json({ error: 'Sfida già terminata' });
+    }
+
+    // Determina il vincitore basandosi sui messaggi inviati durante la sfida
+    let winner: string | null = null;
+
+    if (challenge.type === 'most_messages') {
+      const messages = await prisma.message.findMany({
+        where: {
+          timestamp: {
+            gte: challenge.startedAt,
+            lte: new Date()
+          },
+          fromTableId: { not: null }
+        }
+      });
+
+      const counts: Record<string, number> = {};
+      for (const msg of messages) {
+        if (msg.fromTableId) {
+          counts[msg.fromTableId] = (counts[msg.fromTableId] || 0) + 1;
+        }
+      }
+
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      if (sorted.length > 0) {
+        winner = sorted[0][0];
+      }
+    } else if (challenge.type === 'most_reactions') {
+      const messages = await prisma.message.findMany({
+        where: {
+          timestamp: {
+            gte: challenge.startedAt,
+            lte: new Date()
+          },
+          fromTableId: { not: null }
+        }
+      });
+
+      const reactionCounts: Record<string, number> = {};
+      for (const msg of messages) {
+        if (msg.fromTableId) {
+          const total = msg.reactionsHeart + msg.reactionsThumbsup + msg.reactionsFire + msg.reactionsLaugh;
+          reactionCounts[msg.fromTableId] = (reactionCounts[msg.fromTableId] || 0) + total;
+        }
+      }
+
+      const sorted = Object.entries(reactionCounts).sort((a, b) => b[1] - a[1]);
+      if (sorted.length > 0) {
+        winner = sorted[0][0];
+      }
+    } else if (challenge.type === 'speed') {
+      // Per sfide di velocità: il primo tavolo che ha inviato un messaggio dopo l'inizio
+      const firstMessage = await prisma.message.findFirst({
+        where: {
+          timestamp: { gte: challenge.startedAt },
+          fromTableId: { not: null }
+        },
+        orderBy: { timestamp: 'asc' }
+      });
+
+      if (firstMessage && firstMessage.fromTableId) {
+        winner = firstMessage.fromTableId;
+      }
+    }
+
+    // Termina la sfida
+    await prisma.challenge.update({
+      where: { id: challengeId },
+      data: { active: false, winner }
+    });
+
+    console.log(`✓ Sfida "${challenge.title}" terminata. Vincitore: ${winner || 'Nessuno'}`);
+
+    res.json({ success: true, winner });
+  } catch (error) {
+    console.error('Error ending challenge:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
 // AVVIO SERVER
 // ============================================
 
