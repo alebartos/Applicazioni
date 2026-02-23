@@ -215,7 +215,7 @@ export default function AdminSetup({ onSetupComplete }: AdminSetupProps) {
                         {/* Submit button */}
                         <Button
                             type="submit"
-                            className="w-full min-h-[44px] bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
+                            className="w-full min-h-[44px]"
                             disabled={isLoading || !firstName.trim() || !lastName.trim() || !password || !confirmPassword}
                         >
                             {isLoading ? (

@@ -1045,7 +1045,7 @@ export function AdminPanel({ adminName, onLogout, isAdmin = true, isStaff = fals
                     <Button
                         onClick={handleBroadcast}
                         disabled={isSendingBroadcast || !broadcastMessage.trim()}
-                        className="w-full min-h-[44px] bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                        className="w-full min-h-[44px]"
                         size="sm"
                     >
                       <Send className="w-4 h-4 mr-2" />
@@ -1129,7 +1129,7 @@ export function AdminPanel({ adminName, onLogout, isAdmin = true, isStaff = fals
                           </div>
                           <Button
                               onClick={handleStartCountdown}
-                              className="w-full min-h-[44px] bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                              className="w-full min-h-[44px]"
                               size="sm"
                           >
                             <Play className="w-4 h-4 mr-2" />
@@ -1635,7 +1635,7 @@ export function AdminPanel({ adminName, onLogout, isAdmin = true, isStaff = fals
                     <div className="space-y-3">
                       <Button
                           onClick={() => window.open(`${window.location.origin}?tv`, '_blank')}
-                          className="w-full min-h-[48px] text-base bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                          className="w-full min-h-[48px] text-base"
                       >
                         <Radio className="w-5 h-5 mr-2" />
                         Apri TV Display in Nuova Finestra
