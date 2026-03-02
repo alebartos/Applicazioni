@@ -21,7 +21,7 @@ app.set('trust proxy', 1);
 
 // Configurazione JWT Secret
 if (!process.env.JWT_SECRET) {
-  console.warn('⚠️ JWT_SECRET non configurato! Usando valore di default NON SICURO');
+  console.log('🔑 JWT_SECRET non configurato in .env — verrà generato dinamicamente');
 }
 
 // Configurazione CORS sicura

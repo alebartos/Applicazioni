@@ -1,13 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { prisma } from '../index';
 
-// JWT Secret (deve essere configurato in .env)
-const JWT_SECRET = process.env.JWT_SECRET || 'CHANGE_THIS_SECRET_IN_PRODUCTION_ENV';
+// JWT Secret — generato dinamicamente se non configurato in .env
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
 const JWT_EXPIRES_IN = '24h'; // Token valido per 24 ore
 
 if (!process.env.JWT_SECRET) {
-    console.warn('⚠️ JWT_SECRET non configurato! Usando valore di default NON SICURO');
+    console.log('🔑 JWT_SECRET generato dinamicamente per questa sessione');
 }
 
 // Interfaccia per il payload JWT

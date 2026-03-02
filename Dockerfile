@@ -85,7 +85,7 @@ stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
 
 [program:backend]
-command=sh -c "cd /app/backend && npx prisma db push --skip-generate && node dist/index.js"
+command=sh -c "export JWT_SECRET=$$(head -c 64 /dev/urandom | od -An -tx1 | tr -d ' \n') && cd /app/backend && npx prisma db push --skip-generate && node dist/index.js"
 autostart=true
 autorestart=true
 stdout_logfile=/dev/stdout
